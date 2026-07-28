@@ -8,6 +8,8 @@ LumiScape is an interactive lighting design environment for creating and simulat
 🎭 Preview lighting effects in a virtual stage
 💡 Connect virtual designs to real lighting systems
 
+Demo: https://muse-studio.github.io/LumiScape/
+
 ## Research Project
 
 LumiScape is an academic research project developed by MuseLab, The University of Fukuchiyama.
