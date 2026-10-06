@@ -314,6 +314,58 @@
      width: 45px;
      margin-bottom: 10px;
     }
+    #saveButton {
+     width: 100%;
+     height: 45px;
+     margin-top: 10px;
+     font-size: 18px;
+     cursor: pointer;
+    }
+    #saveConfirmUI {
+     text-align: center;
+     padding-top: 20px;
+    }
+    #saveConfirmUI p {
+     margin-top: 30px;
+     margin-bottom: 30px;
+     font-size: 17px;
+    }
+   .saveConfirmButtons {
+     display: flex;
+     gap: 10px;
+    }
+    .saveConfirmButtons button {
+     flex: 1;
+     height: 45px;
+     font-size: 16px;
+     cursor: pointer;
+    }
+    #resetButton {
+     width: 100%;
+     height: 45px;
+     margin-top: 10px;
+     font-size: 18px;
+     cursor: pointer;
+    }
+    #resetConfirmUI {
+     text-align: center;
+     padding-top: 20px;
+    }
+    #resetConfirmUI p {
+     margin-top: 30px;
+     margin-bottom: 30px;
+     font-size: 17px;
+    }
+    .resetConfirmButtons {
+     display: flex;
+     gap: 10px;
+    }
+    .resetConfirmButtons button {
+     flex: 1;
+     height: 45px;
+     font-size: 16px;
+     cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -348,6 +400,30 @@
           class="menuButton"
           onclick="showPlateUI()"
         >プレート</button>
+        <hr>
+        <button
+          id="saveButton"
+          onclick="openSaveDialog()"
+        >保存</button>
+        <button id="resetButton" onclick="openResetDialog()"
+        >リセット</button>
+      </div>
+      <div id="saveConfirmUI" style="display:none;">
+        <h3>保存</h3>
+        <p>現在の状態を保存しますか？</p>
+        <div class="saveConfirmButtons">
+          <button onclick="confirmSave()">はい</button>
+          <button onclick="cancelSave()">いいえ</button>
+        </div>
+      </div>
+      <!-- リセット確認画面 -->
+      <div id="resetConfirmUI" style="display:none;">
+        <h3>リセット</h3>
+        <p>初期状態に戻しますか？</p>
+        <div class="resetConfirmButtons">
+          <button onclick="confirmReset()">はい</button>
+          <button onclick="cancelReset()">いいえ</button>
+        </div>
       </div>
       <!-- 部屋設定ページ -->
       <div id="roomSettingUI" style="display:none;">
@@ -758,6 +834,7 @@ let currentPlaneWall = "front"; // 今設定している壁
 
 
 init();
+loadProject();
 createTimelineRuler();
 updateTimelineHeight();
 syncTimelineScroll();
@@ -2118,6 +2195,111 @@ function showPlateUI() {
   } else {
     showExistingWallBlocks();
   }
+}
+
+// 保存確認画面を開く
+function openSaveDialog() {
+  // 最初のメニューを消す
+  document.getElementById("mainMenuUI").style.display = "none";
+  // 保存確認画面を表示
+  document.getElementById("saveConfirmUI").style.display = "block";
+}
+// 保存しない
+function cancelSave() {
+  // 保存確認画面を消す
+  document.getElementById("saveConfirmUI").style.display = "none";
+  // 元の操作パネルに戻る
+  document.getElementById("mainMenuUI").style.display = "block";
+}
+function confirmSave() {
+  saveProject();
+  document.getElementById("saveConfirmUI").style.display = "none";
+  document.getElementById("mainMenuUI").style.display = "block";
+  alert("保存しました");
+}
+// プロジェクト保存
+function saveProject() {
+  const saveData = {
+    // 部屋
+    room: {width: roomWidth,depth: roomDepth,height: roomHeight},
+    // タイムライン
+    timeline: {duration: timelineDuration,isLoop: isLoop}
+  };
+  localStorage.setItem(
+    "lightingSimulatorSave",JSON.stringify(saveData)
+  );
+  console.log("保存データ",saveData);
+}
+
+// プロジェクト読み込み
+function loadProject() {
+  // 保存データを取得
+  const savedText =localStorage.getItem("lightingSimulatorSave");
+  // 保存データがなければ何もしない
+  if (!savedText) {return;}
+  // 文字列からデータに戻す
+  const saveData =JSON.parse(savedText);
+  // 部屋サイズを復元
+  if (saveData.room) {
+    roomWidth =saveData.room.width;
+    roomDepth =saveData.room.depth;
+    roomHeight =saveData.room.height;
+    // 入力欄の表示も戻す
+    const widthInput =document.getElementById("roomWidthInput");
+    const depthInput =document.getElementById("roomDepthInput");
+    const heightInput =document.getElementById("roomHeightInput");
+    if (widthInput) {widthInput.value = roomWidth;}
+    if (depthInput) {depthInput.value = roomDepth;}
+    if (heightInput) {heightInput.value = roomHeight;}
+    // 保存したサイズで3Dの部屋を作り直す
+    createRoom();
+  }
+  // タイムラインを復元
+  if (saveData.timeline) {
+    timelineDuration =saveData.timeline.duration;
+    isLoop =saveData.timeline.isLoop;
+  }
+  // ループボタン表示を復元
+  const loopButton =document.getElementById("loopButton");
+  if (loopButton) {
+    if (isLoop) {
+      // ONで保存されていた場合
+      loopButton.textContent = "ループON";
+      loopButton.classList.add("loopOn");
+    } else {
+      // OFFで保存されていた場合
+      loopButton.textContent = "ループOFF";
+      loopButton.classList.remove("loopOn");
+   }
+  }
+  // 時間入力欄を復元
+  const durationInput =document.getElementById("durationInput");
+  if (durationInput) {
+    durationInput.value =Math.ceil(timelineDuration);
+  }
+  // タイムスライダーを復元
+  const timeSlider =document.getElementById("timeSlider");
+  if (timeSlider) {timeSlider.max =timelineDuration;}
+  // タイムライン目盛りを作り直す
+  createTimelineRuler();
+}
+
+// リセット確認画面を開く
+function openResetDialog() {
+  document.getElementById("mainMenuUI").style.display = "none";
+  document.getElementById("resetConfirmUI").style.display = "block";
+}
+// リセットをキャンセル
+function cancelReset() {
+  document.getElementById("resetConfirmUI").style.display = "none";
+  document.getElementById("mainMenuUI").style.display = "block";
+}
+// リセット実行
+function confirmReset() {
+  // 保存データを削除
+  localStorage.removeItem("lightingSimulatorSave");
+  // ページを再読み込み
+  location.reload();
 }
 
 function closePlateUI() {

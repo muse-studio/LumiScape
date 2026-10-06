@@ -1,0 +1,4208 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>照明シミュレーター</title>
+  <style>
+    body {
+     margin: 0;
+     display: flex;
+     flex-direction: column;
+     height: 100vh;
+     overflow: hidden;
+    }
+    #mainArea {
+     flex: 1;
+     display: flex;
+    }
+    #scene {
+     flex: 1;
+     overflow: hidden;
+     position: relative;
+    }
+    #ui {
+     width: 300px;
+     background: #eee;
+     padding: 10px;
+    }
+    #timeline {
+     height: 300px;
+     background: #222;
+     color: white;
+     border-top: 2px solid #444;
+     padding: 10px;
+     display: flex;
+     flex-direction: column;
+     box-sizing: border-box;
+    }
+    #timelineControls button {
+     width: 40px;
+     height: 30px;
+     font-size: 16px;
+    }
+    #timelineControls #loopButton {
+     width: auto;
+     width: 95px;
+     height: 30px;
+     padding: 0 10px;
+     font-size: 14px;
+     background: #f0f0f0;
+     color: black;
+     border: 1px solid #888;
+     border-radius: 2px;
+     cursor: pointer;
+    }
+    #timelineControls #loopButton.loopOn {
+     background: yellow;
+     color: black;
+    }
+    #timelineRuler {
+     position: relative;
+     height: 30px;
+     background: #333;
+     border-bottom: 1px solid #555;
+     overflow-x: auto;
+     overflow-y: hidden;
+     white-space: nowrap;
+     -webkit-overflow-scrolling: touch;
+    }
+    .timeMark {
+     position: absolute;
+     top: 5px;
+     color: white;
+     font-size: 12px;
+    }
+    #playhead {
+     position: absolute;
+     top: 0;
+     left: 200px;
+     width: 2px;
+     height: 100%;
+     background: red;
+     z-index: 999;
+     pointer-events: none;
+    }
+    #keyframeArea {
+     position: relative;
+     height: 240px;
+     background: #1e1e1e;
+     overflow-x: auto;
+     overflow-y: auto;
+     border-top: 1px solid #555;
+     -webkit-overflow-scrolling: touch;
+    }
+    #trackLabels {
+     position: absolute;
+     left: 0;
+     top: 0;
+     width: 150px;
+     height: 100%;
+     background: #2a2a2a;
+     z-index: 1000;
+     border-right: 1px solid #555;
+     pointer-events: none;
+    }
+    #rulerHeader {
+     position: absolute;
+     left: 0;
+     top: 0;
+     width: 150px;
+     height: 100%;
+     background: #2a2a2a;
+     z-index: 1000;
+     border-right: 1px solid #555;
+    }
+    .trackLabel {
+     height: 80px;
+     line-height: 80px;
+     padding-left: 12px;
+     color: white;
+     border-bottom: 1px solid #444;
+     box-sizing: border-box;
+     font-size: 14px;
+     background: #2a2a2a;
+     width: 150px;
+    }
+    #playheadLine {
+     position: absolute;
+     top: 0;
+     left: 200px;
+     width: 2px;
+     height: 100%;
+     background: red;
+     z-index: 999;
+     pointer-events: none;
+    }
+    #timelineRuler::-webkit-scrollbar,
+    #keyframeArea::-webkit-scrollbar {
+     display: none;
+    }
+    .waveformCanvas {
+     position: absolute;
+     left: 0;
+     top: 8px;
+     height: 55px;
+     z-index: 1;
+     pointer-events: none;
+     opacity: 0.85;
+    }
+    .keyframe {
+     position: absolute;
+     width: 12px;
+     height: 12px;
+     background: orange;
+     border-radius: 50%;
+     top: 20px;
+     transform: translateX(-50%);
+     cursor: pointer;
+     z-index: 5;
+    }
+    .selectedKeyframe {
+     outline: 2px solid yellow;
+    }
+    #backButton {
+     width: 28px;
+     height: 28px;
+     font-size: 14px;
+     padding: 0;
+     margin-bottom: 4px;
+     cursor: pointer;
+    }
+    #keyframeInner {
+     position: relative;
+     width: 3000px;
+     height: 100%;
+     margin-left: 150px;
+    }
+    #modeButtons {
+     position: absolute;
+     bottom: 20px;
+     left: 20px;
+     display: flex;
+     gap: 10px;
+     z-index: 1000;
+    }
+    #modeButtons button {
+     width: 60px;
+     height: 60px;
+     font-size: 24px;
+     border: none;
+     border-radius: 12px;
+     background: rgba(50,50,50,0.8);
+     color: white;
+     cursor: pointer;
+    }
+    #modeButtons button.active {
+     background: orange;
+    }
+    .lightButton{
+     width:100%;
+     height:120px;
+     display:flex;
+     flex-direction:column;
+     align-items:center;
+     justify-content:center;
+     gap:8px;
+     margin-bottom:10px;
+     cursor:pointer;
+    }
+    .lightPanel {
+     width: 100%;
+     min-height: 170px;
+     border: 1px solid #888;
+     margin-bottom: 10px;
+     padding: 10px;
+     box-sizing: border-box;
+     text-align: center;
+    }
+    .lightTitle {
+     font-size: 18px;
+     margin-bottom: 10px;
+    }
+    .mountButtons {
+     display: flex;
+     gap: 8px;
+     justify-content: center;
+     margin-bottom: 10px;
+    }
+    .mountButtons button {
+     width: 70px;
+     height: 32px;
+     font-size: 15px;
+     cursor: pointer;
+    }
+    .lightButton img{
+     width:70px;
+     height:70px;
+     object-fit:contain;
+    }
+    .movingControlRow {
+     display: flex;
+     gap: 18px;
+    }
+    .movingControlBox {
+     flex: 1;
+    }
+    .directionButtonSpace {
+     height: 34px;
+     margin-bottom: 16px;
+    }
+    .movingControlBox input[type="range"] {
+     width: 100%;
+    }
+    .angleInputBox{
+     display:flex;
+     align-items:center;
+     gap:4px;
+     margin-top:8px;
+    }
+    .angleInput {
+     width: 45px;
+     height: 24px;
+     font-size: 16px;
+     margin-top: 8px;
+    }
+    .angleInputBox span{
+     font-size:20px;
+     font-weight:bold;
+    }
+    .wallButtonWrap {
+     position: relative;
+    }
+    .wallMenu {
+     display: none;
+     position: absolute;
+     top: 40px;
+     left: -45px;
+     background: white;
+     border: 1px solid #888;
+     padding: 8px;
+     z-index: 2000;
+     box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+     white-space: nowrap;
+    }
+    .wallMenu::before {
+     content: "";
+     position: absolute;
+     top: -8px;
+     left: 55px;
+     border-left: 8px solid transparent;
+     border-right: 8px solid transparent;
+     border-bottom: 8px solid white;
+    }
+    .wallMenu button {
+     width: 45px;
+     height: 30px;
+     margin: 2px;
+    }
+    .menuButton {
+     width: 100%;
+     height: 70px;
+     margin-bottom: 12px;
+     font-size: 22px;
+     cursor: pointer;
+    }
+    .menuBackButton {
+     width: 40px;
+     height: 34px;
+     margin-bottom: 8px;
+     font-size: 18px;
+     cursor: pointer;
+    }
+    #roomSettingUI label {
+     display: inline-block;
+     width: 45px;
+     margin-bottom: 10px;
+    }
+    .lightingModeRow {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+     margin: 12px 0;
+    }
+    .switch {
+     position: relative;
+     display: inline-block;
+     width: 52px;
+     height: 28px;
+    }
+    .switch input {
+     opacity: 0;
+     width: 0;
+     height: 0;
+    }
+    .switchSlider {
+     position: absolute;
+     cursor: pointer;
+     inset: 0;
+     background: #aaa;
+     border-radius: 28px;
+     transition: 0.25s;
+    }
+    .switchSlider::before {
+     content: "";
+     position: absolute;
+     width: 22px;
+     height: 22px;
+     left: 3px;
+     top: 3px;
+     background: white;
+     border-radius: 50%;
+     transition: 0.25s;
+    }
+    .switch input:checked + .switchSlider {
+     background: #35d05b;
+    }
+    .switch input:checked + .switchSlider::before {
+     transform: translateX(24px);
+    }
+  </style>
+</head>
+<body>
+<div id="mainArea">
+  <!-- 3D画面 -->
+  <div id="scene">
+    <div id="modeButtons">
+      <button id="cameraModeButton">📷</button>
+      <button id="handModeButton">✋</button>
+      <button id="objectModeButton">💡</button>
+    </div>
+  </div>
+  <!-- 右側UI -->
+  <div id="ui">
+    <!-- 通常UI -->
+    <div id="defaultUI">
+      <!-- 最初のメニュー -->
+      <div id="mainMenuUI">
+        <h3>操作パネル</h3>
+        <button onclick="toggleLight()">
+          部屋照明 ON/OFF
+        </button>
+        <hr>
+        <button
+          class="menuButton"
+          onclick="showRoomUI()"
+        >部屋</button>
+        <button
+          class="menuButton"
+          onclick="showLightUI()"
+        >ライト</button>
+        <button
+          class="menuButton"
+          onclick="showPlateUI()"
+        >プレート</button>
+      </div>
+      <!-- 部屋設定ページ -->
+      <div id="roomSettingUI" style="display:none;">
+        <button
+          class="menuBackButton"
+          onclick="showMainMenuUI()"
+        >←</button>
+        <h3>部屋設定</h3>
+        <h4>部屋サイズ</h4>
+        <label>横</label>
+        <input
+          type="number"
+          id="roomWidthInput"
+          value="10"
+          style="width:60px;"
+        >m<br>
+        <label>縦</label>
+        <input
+          type="number"
+          id="roomDepthInput"
+          value="8"
+          style="width:60px;"
+        >m<br>
+        <label>高さ</label>
+        <input
+          type="number"
+          id="roomHeightInput"
+          value="4"
+          style="width:60px;"
+        >m<br><br>
+        <button onclick="updateRoomSize()">
+          部屋サイズ変更
+        </button>
+      </div>
+      <!-- ライト選択ページ -->
+      <div id="lightSelectionUI" style="display:none;">
+        <button
+          class="menuBackButton"
+          onclick="showMainMenuUI()"
+        >←</button>
+        <div class="lightingModeRow">
+          <span>照明効果</span>
+          <label class="switch">
+            <input
+             type="checkbox"
+             id="realLightingSwitch"
+             onchange="toggleRealLighting(this.checked)"
+            >
+            <span class="switchSlider"></span>
+          </label>
+        </div>
+        <h3>ライト選択</h3>
+        <div class="lightPanel">
+          <div class="lightTitle">
+            ムービングライト
+          </div>
+          <div class="mountButtons">
+            <button onclick="addMovingLight('floor')">床</button>
+            <div class="wallButtonWrap">
+              <button onclick="toggleWallMenu()">壁</button>
+              <div id="wallMenu" class="wallMenu">
+                <button
+                  onclick="addMovingLight('wall','front')"
+                >前</button>
+                <button
+                  onclick="addMovingLight('wall','left')"
+                >左</button>
+                <button
+                  onclick="addMovingLight('wall','back')"
+                >後</button>
+                <button
+                  onclick="addMovingLight('wall','right')"
+                >右</button>
+              </div>
+            </div>
+            <button onclick="addMovingLight('ceiling')">天井</button>
+          </div>
+        </div>
+        <button
+          class="lightButton"
+          onclick="addTapeLight()"
+        >
+          <div>テープライト</div>
+          <img
+            src="テープライト.png"
+            alt="テープライト"
+          >
+        </button>
+        <button class="lightButton" onclick="addSmartBulb()">
+          <div>スマートライト</div>
+        </button>
+      </div>
+      <!-- プレート設定ページ -->
+      <div id="plateSettingUI" style="display:none;">
+       <!-- 上部 -->
+       <div class="plateHeader">
+         <button
+           class="menuBackButton"
+           onclick="closePlateUI()"
+          >←</button>
+          <div class="plateHeaderTitle">プレート設定</div>
+          <button
+           id="platePowerButton"
+           class="platePowerButton active"
+           onclick="togglePlatePowerUI()"
+          >ON</button>
+        </div>
+        <!-- 選択状態 -->
+        <div class="plateStatus">
+         <span id="currentWallText">前壁</span>
+         <span id="plateDivisionText">縦4マス×横8マス</span>
+         <span id="selectedPlateCount">選択中：0マス/32マス</span>
+        </div>
+        <!-- 壁面選択 -->
+        <div class="plateSection">
+         <div class="plateSectionTitle">壁面選択</div>
+         <div class="plateWallButtons">
+           <button
+             class="plateWallButton active"
+             data-wall="front"
+             onclick="selectPlateWallUI(this, '前壁')"
+            >前壁</button>
+            <button
+             class="plateWallButton"
+             data-wall="back"
+             onclick="selectPlateWallUI(this, '後壁')"
+            >後壁</button>
+            <button
+             class="plateWallButton"
+             data-wall="left"
+             onclick="selectPlateWallUI(this, '左壁')"
+            >左壁</button>
+            <button
+             class="plateWallButton"
+             data-wall="right"
+             onclick="selectPlateWallUI(this, '右壁')"
+            >右壁</button>
+          </div>
+        </div>
+        <!-- マス数設定 -->
+        <div class="plateSection">
+         <div class="plateSectionTitle">マス(分割)数設定</div>
+         <!-- 横 -->
+         <div class="plateNumberRow">
+           <span class="plateNumberLabel">横（列）数</span>
+           <button
+             class="plateSmallButton"
+             onclick="changePlateColumnsUI(-1)"
+            >−</button>
+           <span id="plateColumnValue" class="plateNumberValue">8</span>
+           <button
+             class="plateSmallButton"
+             onclick="changePlateColumnsUI(1)"
+            >＋</button>
+          </div>
+          <!-- 縦 -->
+          <div class="plateNumberRow">
+           <span class="plateNumberLabel">縦（行）数</span>
+           <button
+             class="plateSmallButton"
+             onclick="changePlateRowsUI(-1)"
+            >−</button>
+            <span id="plateRowValue" class="plateNumberValue">4</span>
+           <button
+             class="plateSmallButton"
+             onclick="changePlateRowsUI(1)"
+            >＋</button>
+          </div>
+          <button
+           class="plateRefreshButton"
+           onclick="refreshPlateUI()"
+          >再表示</button>
+        </div>
+        <!-- 範囲操作 -->
+        <div class="plateSection">
+         <div class="plateSectionTitle">範囲操作</div>
+         <div class="plateWideButtonRow">
+           <button onclick="selectAllPlateUI()">すべて選択</button>
+           <button onclick="clearAllPlateUI()">すべて解除</button>
+          </div>
+        </div>
+        <!-- 列選択 -->
+        <div class="plateSection">
+         <div class="plateSectionTitle">一列選択</div>
+         <div
+           id="plateColumnButtons"
+           class="plateIndexArea"
+          ><!-- JavaScriptで1〜8を作成 --></div>
+        </div>
+        <!-- 行選択 -->
+        <div class="plateSection">
+         <div class="plateSectionTitle"> 一行選択</div>
+         <div
+           id="plateRowButtons"
+           class="plateIndexArea"
+          ><!-- JavaScriptで1〜4を作成 --></div>
+        </div>
+        <!-- 説明 -->
+        <div class="plateHelp">
+         <div>マス：クリックで選択・解除</div>
+         <div>列番号：クリックで一列選択</div>
+         <div>行番号：クリックで一行選択</div>
+        </div>
+      </div>
+    </div>
+    <!-- 選択時UI -->
+    <div id="objectUI" style="display:none;">
+      <button
+        id="backButton"
+        onclick="backToDefaultUI()"
+      >←</button>
+      <h3>オブジェクト設定</h3>
+      <p id="objectType">種類:</p>
+      <p id="objectPosition">位置:</p>
+      <p id="selectedKeyframeText">
+        選択中キーフレーム: なし
+      </p>
+      <label>色</label>
+      <input
+        type="color"
+        id="colorPicker"
+        value="#ffff00"
+      >
+      <hr>
+      <label>電源</label>
+      <button
+        id="powerButton"
+        onclick="toggleTapeLight()"
+      >OFF</button>
+      <hr>
+      <!-- テープライト選択時のUI -->
+      <div id="tapeLightUI" style="display:none;">
+        <label>向き</label>
+        <br>
+        <button onclick="setTapeDirection('left')">← 左</button>
+        <button onclick="setTapeDirection('front')">前</button>
+        <button onclick="setTapeDirection('right')">右 →</button>
+        <button onclick="setTapeDirection('back')">後</button>
+        <br><br>
+        <input
+         type="range"
+         id="rotationSlider"
+         min="0"
+         max="360"
+         value="0"
+         oninput="updateRotationSlider(this.value)"
+        >
+        <p id="rotationValue">0°</p>
+      </div>
+      <!-- ムービングライト選択時のUI -->
+      <div id="movingLightUI" style="display:none;">
+        <div class="movingControlRow">
+          <!-- 横方向 -->
+          <div class="movingControlBox">
+            <label>向き</label>
+            <br>
+            <button onclick="setMovingDirection('left')">左</button>
+            <button onclick="setMovingDirection('front')">前</button>
+            <button onclick="setMovingDirection('right')">右</button>
+            <button onclick="setMovingDirection('back')">後</button>
+            <br><br>
+            <input
+             type="range"
+             id="movingRotationSlider"
+             min="0"
+             max="360"
+             value="0"
+             oninput="updateMovingRotationSlider(this.value)"
+            >
+            <div class="angleInputBox">
+              <input
+               type="number"
+               id="movingRotationValue"
+               class="angleInput"
+               min="0"
+               max="360"
+               value="0"
+               oninput="updateMovingRotationNumber(this.value)"
+              >
+              <span>°</span>
+            </div>
+          </div>
+          <!-- 縦方向 -->
+          <div class="movingControlBox">
+            <label>縦方向</label>
+            <br>
+            <!-- 左側の方向ボタン分の空白 -->
+            <div class="directionButtonSpace"></div>
+            <input
+             type="range"
+             id="movingTiltSlider"
+             min="-90"
+             max="90"
+             value="-30"
+             oninput="updateMovingTiltSlider(this.value)"
+            >
+            <div class="angleInputBox">
+            <input
+             type="number"
+             id="movingTiltValue"
+             class="angleInput"
+             min="-90"
+             max="90"
+             value="-30"
+             oninput="updateMovingTiltNumber(this.value)"
+            >
+            <span>°</span>
+          </div>
+        </div>
+      </div>
+    </div>
+      <hr>
+      <button onclick="deleteSelectedObject()">
+        削除
+      </button>
+    </div>
+  </div>
+  <!-- ↑ #ui 終了 -->
+</div>
+<!-- ↑ #mainArea 終了 -->
+<!-- タイムラインはmainAreaの外 -->
+<div id="timeline">
+  <div id="timelineControls">
+    <button onclick="playTimeline()">▶</button>
+    <button onclick="pauseTimeline()">⏸</button>
+    <button onclick="stopTimeline()">■</button>
+    <input
+      type="range"
+      id="timeSlider"
+      min="0"
+      max="60"
+      step="0.1"
+      value="0"
+      oninput="updateTimelineTime(this.value)"
+    >
+    <span id="currentTime">0.0s</span>
+    <label>長さ</label>
+    <input
+      type="text"
+      id="durationInput"
+      value="60"
+      style="width:60px; height:26px;"
+      onkeydown="
+        if(event.key === 'Enter') {
+          changeTimelineDuration(this.value)
+        }
+      "
+      onblur="changeTimelineDuration(this.value)"
+    >
+    <span>s</span>
+    <button
+      id="loopButton"
+      onclick="toggleLoop()"
+    >ループOFF</button>
+    <input
+      type="file"
+      id="audioFile"
+      accept=".mp3"
+    >
+  </div>
+  <div id="timelineRuler">
+    <div id="rulerHeader"></div>
+    <div id="playhead"></div>
+  </div>
+  <div id="keyframeArea">
+    <div id="playheadLine"></div>
+    <div id="trackLabels"></div>
+    <div id="keyframeInner"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+function onWindowResize() {
+  camera.aspect =(window.innerWidth-300)/(window.innerHeight-300);
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth-300,window.innerHeight-300);
+}
+
+let scene,camera,renderer;
+let currentTime=0;
+let isPlaying=false;
+let light,sphere;
+let lightOn=true;
+let objects=[];
+let selectedObject=null;
+let selectedKeyframe = null;
+let draggingKeyframe = null;
+let copiedKeyframeData = null;
+let isEditingKeyframe = false;
+let raycaster=new THREE.Raycaster();
+let mouse=new THREE.Vector2();
+let isDragging=false;
+let movingLightCount = 0;
+let tapeLightCount=0;
+let smartBulbCount = 0;
+let isDraggingKeyframe = false;
+let movedKeyframe = false;
+let justDraggedKeyframe = false;
+let controlMode = "object";
+let lastHueSentKeyframe = null;
+// 実機ムービングライトの最後に送ったTILT角度
+let lastSentMovingTiltDegree = null;
+let cameraYaw = 0;
+let cameraPitch = 0;
+let cameraDistance = 8;
+let cameraTarget = new THREE.Vector3(0, 3.0, 0);
+const TRACK_HEIGHT = 80;
+const KEYFRAME_TOP_OFFSET = 34;
+let timelineDuration = 60; // タイムライン長
+let pixelsPerSecond = 50;  // 1秒=50px
+let audio = new Audio();   // 音楽用
+let isLoop = false;
+let audioContext = null;
+let audioBuffer = null;
+let roomWidth = 10;  // 横（画像の横長空間に合わせた初期値）
+let roomDepth = 8;   // 縦
+let roomHeight = 4;  // 高さ（吹き抜けを表現するため高め）
+const ROOM_SCALE = 2.5;
+let roomObjects = [];
+let furnitureSnapSurfaces = [];
+let planeMode = false; // プレーン選択モードかどうか
+let wallBlocks = [];   // 表示するブロック
+let selectedBlocks = []; // 選択されたブロック
+let currentPlaneWall = "front"; // 今設定している壁
+let ceilingFan1;
+let ceilingFan2;
+let roomLightOn = true;
+let realisticLightingEnabled = false;
+
+
+init();
+createTimelineRuler();
+updateTimelineHeight();
+syncTimelineScroll();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a2e);
+  camera = new THREE.PerspectiveCamera(75,(window.innerWidth-300)/(window.innerHeight-300),0.1,1000);
+  camera.position.set(0, 4.2, 8.5);
+  camera.lookAt(cameraTarget);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setSize(window.innerWidth - 300, window.innerHeight-300);
+  document.getElementById("scene").appendChild(renderer.domElement);
+  // 環境光
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  scene.add(ambientLight);
+  createRoom();
+  renderer.domElement.addEventListener("mousedown", onMouseDown);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
+  document
+  .getElementById("colorPicker")
+  .addEventListener("change", changeLightColor);
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("resize",onWindowResize);
+  window.addEventListener("wheel",onMouseWheel,{passive:false});
+  document
+  .getElementById("keyframeArea")
+  .addEventListener("dblclick", addKeyframe);
+  document
+  .getElementById("audioFile")
+  .addEventListener("change", handleAudioFile);
+  document
+  .getElementById("keyframeArea")
+  .addEventListener("click", clearKeyframeSelection);
+  function clearKeyframeSelection(event) {
+    // ドラッグ直後のクリックは無視
+    if (justDraggedKeyframe) {
+      justDraggedKeyframe = false;
+      return;
+    }
+    if (event.target.closest(".keyframe")) {return;}
+    if (selectedKeyframe) {
+      selectedKeyframe.classList.remove("selectedKeyframe");
+      selectedKeyframe = null;
+      resetSelectedObjectToDefaultState();
+    }
+    updateSelectedKeyframeUI();
+  }
+  document
+  .getElementById("cameraModeButton")
+  .addEventListener("click", () => {controlMode = "camera";
+    document
+      .getElementById("cameraModeButton")
+      .classList.add("active");
+    document
+      .getElementById("handModeButton")
+      .classList.remove("active");
+    document
+      .getElementById("objectModeButton")
+      .classList.remove("active");
+    renderer.domElement.style.cursor = "grab";
+  });
+  document
+  .getElementById("handModeButton")
+  .addEventListener("click", () => {controlMode = "hand";
+    document
+     .getElementById("handModeButton")
+     .classList.add("active");
+    document
+     .getElementById("cameraModeButton")
+     .classList.remove("active");
+    document
+     .getElementById("objectModeButton")
+     .classList.remove("active");
+    renderer.domElement.style.cursor = "grab";
+  });
+  document
+  .getElementById("objectModeButton")
+  .addEventListener("click", () => {
+    controlMode = "object";
+    document
+      .getElementById("objectModeButton")
+      .classList.add("active");
+    document
+      .getElementById("cameraModeButton")
+      .classList.remove("active");
+    document
+     .getElementById("cameraModeButton")
+     .classList.remove("active");
+    document
+     .getElementById("handModeButton")
+     .classList.remove("active");
+    renderer.domElement.style.cursor = "default";
+  });
+}
+
+// 描画
+function animate() {
+  requestAnimationFrame(animate);
+  // 再生中
+  if (isPlaying) {
+    if (audio.src) {
+      currentTime = audio.currentTime;
+    } else {
+      currentTime += 0.016;
+    }
+    if (currentTime >= timelineDuration) {
+      if (isLoop) {
+        currentTime = 0;
+        lastHueSentKeyframe = null;
+        document.getElementById(
+          "timelineRuler"
+        ).scrollLeft = 0;
+        document.getElementById(
+          "keyframeArea"
+        ).scrollLeft = 0;
+      } else {
+        currentTime = timelineDuration;
+        isPlaying = false;
+        turnOffAllLights();
+      }
+    }
+  }
+  // UI更新
+  document.getElementById("timeSlider").value =currentTime;
+  document.getElementById("currentTime").textContent =currentTime.toFixed(1) + "s";
+  // タイムライン位置
+  const timelineX = currentTime * 50;
+  document.getElementById("playhead").style.left =(150 + timelineX) + "px";
+  document.getElementById("playheadLine").style.left =(150 + timelineX) + "px";
+  // 再生中だけ自動スクロール
+  if (isPlaying) {
+    const ruler =document.getElementById("timelineRuler");
+    const keyframeArea =document.getElementById("keyframeArea");
+    // 赤線中央基準
+    const scrollPosition =timelineX - 200;
+    // 最大スクロール量
+    const maxScroll =keyframeArea.scrollWidth -keyframeArea.clientWidth;
+    // 範囲制限
+    const scrollX = Math.min(
+      Math.max(0, scrollPosition),maxScroll
+    );
+    // 上下同期
+    ruler.scrollLeft = scrollX;
+    keyframeArea.scrollLeft = scrollX;
+  }
+  applyKeyframes();
+  renderer.render(scene, camera);
+}
+
+function createRoom() {
+  // 以前の部屋・家具・建具を削除
+  roomObjects.forEach(obj => scene.remove(obj));
+  roomObjects = [];
+  furnitureSnapSurfaces = [];
+
+  const visualWidth = roomWidth * ROOM_SCALE;
+  const visualDepth = roomDepth * ROOM_SCALE;
+  const visualHeight = roomHeight * ROOM_SCALE;
+  const halfW = visualWidth / 2;
+  const halfD = visualDepth / 2;
+
+  // 比率を変えても家具や建具の配置が崩れにくいようにする
+  const sx = visualWidth / 25;
+  const sz = visualDepth / 20;
+  const sy = visualHeight / 10;
+  const loftY = visualHeight * 0.56;
+  const wallThickness = 0.18;
+
+  const addRoomObject = obj => {
+    scene.add(obj);
+    roomObjects.push(obj);
+    return obj;
+  };
+  const mat = (color, roughness = 0.75, metalness = 0) =>
+    new THREE.MeshStandardMaterial({ color, roughness, metalness });
+  const creamMat = mat(0xf1eadf, 0.95);
+  const woodFloorMat = mat(0xb87836, 0.82);
+  const lightWoodMat = mat(0xc78f4e, 0.8);
+  const darkWoodMat = mat(0x2f1b16, 0.72);
+  const mediumWoodMat = mat(0x70452c, 0.78);
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0x9fd7e8,
+    transparent: true,
+    opacity: 0.42,
+    roughness: 0.18,
+    metalness: 0.05,
+    side: THREE.DoubleSide
+  });
+  const blackMat = mat(0x171717, 0.55);
+  const fabricMat = mat(0xe8e2d8, 1.0);
+
+  function addBox(name, size, position, material, rotation = [0, 0, 0]) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(size[0], size[1], size[2]),
+      material
+    );
+    mesh.name = name;
+    mesh.position.set(position[0], position[1], position[2]);
+    mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return addRoomObject(mesh);
+  }
+
+  function addPlane(name, width, height, position, rotation, material) {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height),
+      material
+    );
+    mesh.name = name;
+    mesh.position.set(position[0], position[1], position[2]);
+    mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+    mesh.receiveShadow = true;
+    return addRoomObject(mesh);
+  }
+
+  // ---------- 基本の床・4壁・天井 ----------
+  const floor = addPlane(
+    '床', visualWidth, visualDepth,
+    [0, 0, 0], [-Math.PI / 2, 0, 0], woodFloorMat
+  );
+  floor.userData.surface = 'floor';
+
+  // ライトの壁面設置機能を維持するため、4面は従来どおりwallSideを持たせる
+  const backWall = addPlane(
+    '後壁', visualWidth, visualHeight,
+    [0, visualHeight / 2, -halfD], [0, 0, 0], creamMat
+  );
+  backWall.userData.surface = 'wall';
+  backWall.userData.wallSide = 'back';
+
+  const frontWall = addPlane(
+    '前壁（入口側）', visualWidth, visualHeight,
+    [0, visualHeight / 2, halfD], [0, Math.PI, 0], creamMat
+  );
+  frontWall.userData.surface = 'wall';
+  frontWall.userData.wallSide = 'front';
+
+  const leftWall = addPlane(
+    '左壁', visualDepth, visualHeight,
+    [-halfW, visualHeight / 2, 0], [0, Math.PI / 2, 0], creamMat
+  );
+  leftWall.userData.surface = 'wall';
+  leftWall.userData.wallSide = 'left';
+
+  const rightWall = addPlane(
+    '右壁', visualDepth, visualHeight,
+    [halfW, visualHeight / 2, 0], [0, -Math.PI / 2, 0], creamMat
+  );
+  rightWall.userData.surface = 'wall';
+  rightWall.userData.wallSide = 'right';
+
+  addPlane(
+    '天井', visualWidth, visualDepth,
+    [0, visualHeight, 0], [Math.PI / 2, 0, 0], creamMat
+  );
+
+  // 床板の目地（写真の木床らしさ）
+  for (let x = -halfW + 0.75 * sx; x < halfW; x += 1.25 * sx) {
+    addBox('床板目地', [0.025, 0.012, visualDepth], [x, 0.012, 0], darkWoodMat);
+  }
+  for (let z = -halfD + 2.8 * sz; z < halfD; z += 3.0 * sz) {
+    addBox('床板継ぎ目', [visualWidth, 0.014, 0.025], [0, 0.014, z], mediumWoodMat);
+  }
+
+  // ---------- 前壁（入口側） ----------
+  // 入口は3枚目・4枚目を参考に、前壁の中央より少し右へ配置
+  const entranceW = 2.1 * sx;
+  const entranceH = 2.8 * sy;
+  const entranceX = 2.8 * sx;
+  addPlane(
+    '入口開口', entranceW, entranceH,
+    [entranceX, entranceH / 2, halfD - 0.025],
+    [0, Math.PI, 0], blackMat
+  );
+  addBox('入口左枠', [0.16 * sx, entranceH, 0.22],
+    [entranceX - entranceW / 2, entranceH / 2, halfD - 0.10], darkWoodMat);
+  addBox('入口右枠', [0.16 * sx, entranceH, 0.22],
+    [entranceX + entranceW / 2, entranceH / 2, halfD - 0.10], darkWoodMat);
+  addBox('入口上枠', [entranceW + 0.16 * sx, 0.16 * sy, 0.22],
+    [entranceX, entranceH, halfD - 0.10], darkWoodMat);
+
+  // 前壁右側の木製引き戸
+  const slidingX = -3.2 * sx;
+  addPlane('前壁引き戸', 2.25 * sx, 2.55 * sy,
+    [slidingX, 1.275 * sy, halfD - 0.03], [0, Math.PI, 0], lightWoodMat);
+  addBox('引き戸縦桟1', [0.06, 2.55 * sy, 0.05],
+    [slidingX - 1.0 * sx, 1.275 * sy, halfD - 0.07], mediumWoodMat);
+  addBox('引き戸縦桟2', [0.06, 2.55 * sy, 0.05],
+    [slidingX + 1.0 * sx, 1.275 * sy, halfD - 0.07], mediumWoodMat);
+
+  // ---------- 右壁の縦長窓 ----------
+  const windowZs = [-4.6 * sz, -1.8 * sz, 5.0 * sz];
+  windowZs.forEach((z, i) => {
+    const wy = 5.0 * sy;
+    const ww = 1.35 * sz;
+    const wh = 2.15 * sy;
+    addPlane(`右壁窓${i + 1}`, ww, wh,
+      [halfW - 0.025, wy, z], [0, -Math.PI / 2, 0], glassMat);
+    addBox('窓上枠', [0.16, 0.14 * sy, ww + 0.18],
+      [halfW - 0.10, wy + wh / 2, z], mediumWoodMat);
+    addBox('窓下枠', [0.16, 0.14 * sy, ww + 0.18],
+      [halfW - 0.10, wy - wh / 2, z], mediumWoodMat);
+    addBox('窓縦枠1', [0.16, wh, 0.12],
+      [halfW - 0.10, wy, z - ww / 2], mediumWoodMat);
+    addBox('窓縦枠2', [0.16, wh, 0.12],
+      [halfW - 0.10, wy, z + ww / 2], mediumWoodMat);
+  });
+
+  //後壁の縦長窓
+  const windowXs = [2.0 * sx];
+  windowXs.forEach((x, i) => {
+   const wy = 4.0 * sy;
+   const ww = 6.0* sx;
+   const wh = 3.0 * sy;
+   //窓ガラス
+   addPlane(`後壁窓${i + 1}`,ww,wh,
+     [x,wy,-halfD + 0.025],
+     [0,0,0],glassMat
+    );
+   //上枠
+   addBox(`後壁窓${i + 1}上枠`,
+     [ww + 0.18,0.14 * sy,0.16],
+     [x,wy + wh / 2,-halfD + 0.10],mediumWoodMat
+    );
+   //下枠
+   addBox(`後壁窓${i + 1}下枠`,
+     [ww + 0.18,0.14 * sy,0.16],
+     [x,wy - wh / 2,-halfD + 0.10],mediumWoodMat
+    );
+   //左側の縦枠
+   addBox(`後壁窓${i + 1}左枠`,
+     [0.12,wh,0.16],
+     [x - ww / 2,wy,-halfD + 0.10],mediumWoodMat
+    );
+   //右側の縦枠
+   addBox(`後壁窓${i + 1}右枠`,
+     [0.12,wh,0.16],
+     [x + ww / 2,wy,-halfD + 0.10],mediumWoodMat
+    );
+  });
+
+  // ---------- 左側のロフト ----------
+  const loftDepth = visualDepth * 0.3;
+  const loftWidth = visualWidth * 0.48;
+  const loftX = -halfW + loftWidth / 2;
+  const loftZ = -halfD + loftDepth / 2;
+  addBox('ロフト床', [loftWidth, 0.22 * sy, loftDepth],
+    [loftX-3, loftY, loftZ+3], lightWoodMat,[0, Math.PI / 2, 0]);
+  // ロフト前側・右側の手すり
+  const railH = 1.5 * sy;
+  const railY = loftY + railH / 2;
+  addBox('ロフト前手すり上', [loftWidth/2.7, 0.10, 0.10],
+    [loftX-3.75, loftY + railH, -halfD + loftDepth+11], lightWoodMat);
+  for (let x = -halfW + 0.25 * sx; x <= -halfW + loftWidth-7.5*sx; x += 0.4 * sx) {
+    addBox('ロフト前縦格子', [0.08, railH, 0.08],
+      [x, railY, -halfD + loftDepth+11], lightWoodMat);
+  }
+  addBox('ロフト右手すり上', [0.10, 0.10, loftDepth*2],
+    [-halfW + loftWidth-6, loftY + railH, loftZ+3], lightWoodMat);
+  for (let z = -halfD + 0.25 * sz; z <= -halfD + loftDepth+6.0*sx; z += 0.4 * sz) {
+    addBox('ロフト右縦格子', [0.08, railH, 0.08],
+      [-halfW + loftWidth-6, railY, z], lightWoodMat);
+  }
+  // ロフト下の壁
+  const loftWallThickness = 6.0* sz;
+  // 壁の高さ
+  const loftWallHeight = loftY;
+  // 壁の位置
+  const loftWallX = loftX-3.0;
+  const loftWallY = loftWallHeight / 2;
+  // ロフト床の手前端
+  const loftWallZ =-halfD + loftDepth;
+  // 壁を追加
+  addBox('ロフト下前壁',
+   [loftWidth,loftWallHeight,loftWallThickness],
+   [loftWallX,loftWallY,loftWallZ],creamMat,[0, Math.PI / 2, 0]
+  );
+  // 階段横の追加ロフト床
+  const sideLoftWidth = 4.5 * sx;
+  const sideLoftDepth = 5.0 * sz;
+  const loftFloorThickness = 0.22 * sy;
+  addBox('階段横ロフト床',[sideLoftWidth,loftFloorThickness,sideLoftDepth],
+    [-halfW + sideLoftWidth / 2,loftY,4.5 * sz],lightWoodMat);
+  addBox('ロフト右手すり上', [0.10, 0.10, loftDepth/1.25],
+    [-halfW + loftWidth-7.5, loftY + railH, loftZ+11.5], lightWoodMat);
+  for (let z = -halfD + 0.25 * sz; z <= -halfD + loftDepth-1*sx; z += 0.4 * sz) {
+    addBox('ロフト右縦格子', [0.08, railH, 0.08],
+      [-halfW + loftWidth-7.5, railY, z+12], lightWoodMat);
+  }
+  // 左壁側の階段（入口から見て左側）
+  const steps = 11;
+  const stairRun = 5.2 * sz;
+  const stairW = 1.25 * sx;
+  const stairStartZ = 7.5* sz;
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    const stepY = (loftY * 0.94) * t;
+    const stepZ = stairStartZ - stairRun * t;
+    addBox(`階段${i + 1}`,
+      [stairW, 0.16 * sy, 0.48 * sz],
+      [-halfW + stairW / 2 + 4.5* sx, stepY, stepZ],
+      lightWoodMat);
+  }
+  // 階段手すりの支柱
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    const y = loftY * 0.94 * t + 0.65 * sy;
+    const z = stairStartZ - stairRun * t;
+    addBox('階段手すり支柱', [0.08, 1.3 * sy, 0.08],
+      [-halfW + stairW + 4.7 * sx, y, z], lightWoodMat);
+  }
+  const stairAngle = Math.atan2(loftY * 0.94, stairRun);
+  addBox('階段手すり', [0.10, 0.10, Math.sqrt(stairRun ** 2 + (loftY * 0.94) ** 2)],
+    [-halfW + stairW + 4.7 * sx, loftY * 0.47 + 1.25 * sy, stairStartZ - stairRun / 2],
+    lightWoodMat, [stairAngle, 0, 0]);
+  // 階段下の段差壁
+  const stairWallThickness = 6.0 * sx;
+  const stairWallSteps = steps;
+  const stairWallStepDepth =stairRun / stairWallSteps;
+  const stairWallStepHeight =loftY / stairWallSteps;
+  //壁全体の位置調整
+  const stairWallMoveX = 0*sx;
+  const stairWallMoveY = 0;
+  const stairWallMoveZ = -0.7*sz;
+  // 左壁側の位置
+  const stairWallX =-halfW + stairWallThickness / 2;
+  for (let i = 0; i < stairWallSteps; i++) {
+    // 各壁ブロックの高さ
+    const wallHeight =stairWallStepHeight * (i + 1);
+    // 各ブロックのY中心
+    const wallY =wallHeight / 2;
+    // 各ブロックのZ位置
+    const wallZ =stairStartZ -i * stairWallStepDepth;
+    addBox(`階段下壁${i + 1}`,
+     [stairWallThickness,wallHeight,stairWallStepDepth],
+     [stairWallX + stairWallMoveX,wallY + stairWallMoveY,wallZ + stairWallMoveZ],creamMat
+    );
+  }
+  //階段反対側の段差壁
+  const stairWall2Thickness = 4.5 * sx;
+  const stairWall2Steps = steps;
+  const stairWall2StepDepth =stairRun / stairWall2Steps;
+  const stairWall2StepHeight =loftY / stairWall2Steps;
+  const stairWall2MoveX = 0 * sx;
+  const stairWall2MoveY = 0;
+  const stairWall2MoveZ = -0.7 * sz;
+  const stairWall2X =-halfW + stairWall2Thickness / 2;
+  for (let i = 0; i < stairWall2Steps; i++) {
+    const wallHeight =stairWall2StepHeight *(stairWall2Steps - i);
+    const wallY =loftY - wallHeight / 2;
+    const wallZ =stairStartZ -i * stairWall2StepDepth;
+    addBox(`階段反対側壁${i + 1}`,
+     [stairWall2Thickness,wallHeight,stairWall2StepDepth],
+     [stairWall2X + stairWall2MoveX,wallY + stairWall2MoveY,wallZ + stairWall2MoveZ],creamMat);
+  }
+  // 左上の追加壁
+  const upperSideWallThickness = 4.5* sx;
+  const upperSideWallHeight = 10.0 * sy;
+  const upperSideWallDepth = 3 * sz;
+  // 位置調整
+  const upperSideWallMoveX = 0*sx;
+  const upperSideWallMoveY = -5.6*sy;
+  const upperSideWallMoveZ = 17.25*sz;
+  // 左壁沿い
+  const upperSideWallX =-halfW + upperSideWallThickness / 2+ upperSideWallMoveX;
+  // 高さ
+  const upperSideWallY =loftY + upperSideWallHeight / 2+ upperSideWallMoveY;
+  // 前後位置
+  const upperSideWallZ =-halfD + 1.2 * sz+ upperSideWallMoveZ;
+  addBox('左上追加壁',
+   [upperSideWallThickness,upperSideWallHeight,upperSideWallDepth],
+   [upperSideWallX,upperSideWallY,upperSideWallZ],creamMat
+  );
+  // 左壁のドア
+  const leftDoorThickness = 0.08 * sx;
+  const leftDoorHeight = 2.4 * sy;
+  const leftDoorWidth = 1.3 * sz;
+  // 位置調整
+  const leftDoorMoveX = 4.5;
+  const leftDoorMoveY = 0;
+  const leftDoorMoveZ = 5.75;
+  // 左壁の表面位置
+  const leftDoorX =-halfW+ leftDoorThickness / 2+ 0.03+ leftDoorMoveX;
+  // 床に接する高さ
+  const leftDoorY =leftDoorHeight / 2+ leftDoorMoveY;
+  // 左壁上での前後位置
+  const leftDoorZ =3.0 * sz+ leftDoorMoveZ;
+  addBox('左壁ドア',
+   [leftDoorThickness,leftDoorHeight,leftDoorWidth],
+   [leftDoorX,leftDoorY,leftDoorZ],mediumWoodMat
+  );
+  //入口すぐ右の追加壁
+  const rightUpperWallThickness = 4.5 * sx;
+  const rightUpperWallHeight = 10.0 * sy;
+  const rightUpperWallDepth = 3.0 * sz;
+  // 位置調整
+  const rightUpperWallMoveX = 0 * sx;
+  const rightUpperWallMoveY = -5.6 * sy;
+  const rightUpperWallMoveZ = 17.25 * sz;
+  // 右壁沿い
+  const rightUpperWallX =halfW- rightUpperWallThickness / 2+ rightUpperWallMoveX;
+  // 高さ
+  const rightUpperWallY =loftY+ rightUpperWallHeight / 2+ rightUpperWallMoveY;
+  // 前後位置
+  const rightUpperWallZ =-halfD+ 1.2 * sz+ rightUpperWallMoveZ;
+  addBox('右上追加壁',
+   [rightUpperWallThickness,rightUpperWallHeight,rightUpperWallDepth],
+   [rightUpperWallX,rightUpperWallY,rightUpperWallZ],creamMat
+  );
+  // ---------- 写真で目立つ濃色の梁と柱 ----------
+  const beamY = visualHeight * 0.82;
+  [-halfD * 0.56, 0, halfD * 0.50].forEach((z, i) => {
+    addBox(`横梁${i + 1}`, [visualWidth, 0.34 * sy, 0.42 * sz],
+      [0, beamY, z], darkWoodMat);
+  });
+  [-halfW * 0.46-0.75, halfW * 0.18].forEach((x, i) => {
+    addBox(`奥行梁${i + 1}`, [0.40 * sx, 0.32 * sy, visualDepth],
+      [x, beamY + 0.15 * sy, 0], darkWoodMat);
+  });
+  const postPositions = [
+    [-halfW * 0.525, halfD * 0.05-0.5],
+    [halfW * 0.18, 0]
+  ];
+  postPositions.forEach((p, i) => {
+    // 柱ごとの高さ
+    const postHeight =i === 1
+      ? beamY   // 柱2だけ60%の高さ
+      : beamY*0.55;        // 柱1はそのまま
+    const postMoveY =i === 1
+      ? 0 
+      : 5.6*sy;
+    addBox(
+     `柱${i + 1}`,
+     [0.42 * sx,postHeight,0.42 * sz],
+     [p[0],postHeight / 2+ postMoveY,p[1]],darkWoodMat);
+  });
+
+  // ---------- 家具（空間の雰囲気を確認しやすくする簡易形状） ----------
+  // ベンチ
+  const benchSeat = addBox('ベンチ座面',
+   [1.0 * sx, 0.28 * sy, 4.2 * sz],[-6.0 * sx, 1.0 * sy, 5.5 * sz],mediumWoodMat
+  );
+  benchSeat.userData.snapSurface = true;
+  benchSeat.userData.snapY =1.0 * sy + (0.28 * sy) / 2;
+  furnitureSnapSurfaces.push(benchSeat);
+  addBox('ベンチ脚1', [0.64 * sx, 0.95 * sy, 0.42 * sz],
+    [-6.0 * sx, 0.5 * sy, 7.0 * sz], mediumWoodMat);
+  addBox('ベンチ脚2', [0.64 * sx, 0.95 * sy, 0.42 * sz],
+    [-6.0 * sx, 0.5 * sy, 4.0 * sz], mediumWoodMat);
+ 
+  //壁掛けテレビ
+  const tvThickness = 0.12;
+  const tvWidth = 2.75 * sz;
+  const tvHeight = 1.85 * sy;
+  const tvMoveX = 6.0;
+  const tvMoveY = 0.7;
+  const tvMoveZ = 1.5;
+  addBox('テレビ', [tvThickness,tvHeight,tvWidth],
+    [-halfW+0.12+tvMoveX,2.25*sy+tvMoveY,0+tvMoveZ], blackMat);
+  
+  // 台付きレコードプレーヤー
+  const recordPlayerSet = new THREE.Group();
+  // 台：木
+  const recordStandMat = new THREE.MeshStandardMaterial({
+   color: 0x6b4423,roughness: 0.75
+  });
+  // プレーヤー本体
+  const playerMat = new THREE.MeshStandardMaterial({
+   color: 0x4a2f20,roughness: 0.65
+  });
+  // レコード
+  const recordMat = new THREE.MeshStandardMaterial({
+   color: 0x111111,roughness: 0.45
+  });
+  // レコード中央ラベル
+  const labelMat = new THREE.MeshStandardMaterial({
+   color: 0xaa3333
+  });
+  // アーム
+  const armMat = new THREE.MeshStandardMaterial({
+   color: 0x999999,metalness: 0.6,roughness: 0.3
+  });
+  // ① レコードプレーヤーを置く台
+  // 台本体
+  const standBody = new THREE.Mesh(
+   new THREE.BoxGeometry(3.5* sx,1.5 * sy,1.4 * sz),recordStandMat
+  );
+  // 台の中心位置
+  standBody.position.set(0,0.75 * sy,0);
+  recordPlayerSet.add(standBody);
+  //台の天板
+  const standTop = new THREE.Mesh(
+   new THREE.BoxGeometry(3. * sx,0.12 * sy,1.4 * sz),recordStandMat
+  );
+  standTop.position.set(0,1.56 * sy,0);
+  recordPlayerSet.add(standTop);
+  standTop.userData.snapSurface = true;
+  // standTop自体の一番上
+  standTop.userData.snapY =1.56 * sy + (0.12 * sy) / 2;
+  furnitureSnapSurfaces.push(standTop);
+  // ② レコードプレーヤー本体
+  const playerBody = new THREE.Mesh(
+   new THREE.BoxGeometry(1.7 * sx,0.18 * sy,1.2 * sz),playerMat
+  );
+  playerBody.position.set(0,1.71 * sy,0);
+  recordPlayerSet.add(playerBody);
+  // ③ 黒いレコード
+  const record = new THREE.Mesh(
+   new THREE.CylinderGeometry(0.43 * sx,0.43 * sx,0.035 * sy,32),recordMat
+  );
+  record.position.set(-0.20 * sx,1.82 * sy,0);
+  recordPlayerSet.add(record);
+  // ④ レコード中央のラベル
+  const recordLabel = new THREE.Mesh(
+   new THREE.CylinderGeometry(0.12 * sx,0.12 * sx,0.045 * sy,24),labelMat
+  );
+  recordLabel.position.set(-0.20 * sx,1.85 * sy,0);
+  recordPlayerSet.add(recordLabel);
+  // ⑤ レコードプレーヤーのアーム
+  const recordArm = new THREE.Mesh(
+   new THREE.CylinderGeometry(0.025 * sx,0.025 * sx,0.65 * sx,12),armMat
+  );
+  recordArm.position.set(0.48 * sx,1.87 * sy,0.10 * sz);
+  // 横向きにする
+  recordArm.rotation.z = Math.PI / 2;
+  // 少し斜めにする
+  recordArm.rotation.y = -0.4;
+  recordPlayerSet.add(recordArm);
+  // ⑥ 全体の位置
+  recordPlayerSet.position.set(-6.0 * sx,-0.75,1.5 * sz);
+  // ⑦ 全体の向き
+  recordPlayerSet.rotation.y = Math.PI / 2;
+  // シーンに追加
+  scene.add(recordPlayerSet);
+  // createRoom()で管理している場合
+  roomObjects.push(recordPlayerSet);
+  // シーリングファン照明
+  const ceilingLightY = visualHeight - 0.7 * sy;
+  // 左側
+  ceilingFan1 = createCeilingFanLight(
+   -4.5 * sx+6.8,ceilingLightY-1.5,-2.5 * sz+6,1.2
+  );
+  // 右側
+  ceilingFan2 = createCeilingFanLight(
+   4.5 * sx-2.2,ceilingLightY-1.5,-2.5 * sz-3,1.2);
+  // 空間確認用の柔らかい照明。既存の環境光ON/OFFとは別のごく弱い補助光
+  const roomFill = new THREE.DirectionalLight(0xfff4df, 0.38);
+  roomFill.position.set(4, visualHeight, 6);
+  roomFill.castShadow = true;
+  roomFill.shadow.mapSize.set(1024, 1024);
+  addRoomObject(roomFill);
+}
+
+function createCeilingFanLight(x, y, z, scale = 1) {
+  // シーリングファン全体
+  const fanGroup = new THREE.Group();
+  // 天井から伸びる棒
+  const rod = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      0.05 * scale,0.05 * scale,0.55 * scale,12
+    ),
+    new THREE.MeshStandardMaterial({color: 0x3a241c})
+  );
+  rod.position.y = 0.25 * scale;
+  fanGroup.add(rod);
+  // 中央部分
+  const center = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      0.22 * scale,0.28 * scale,0.20 * scale,24
+    ),
+    new THREE.MeshStandardMaterial({color: 0x3a241c})
+  );
+  center.position.y = -0.08 * scale;
+  fanGroup.add(center);
+  // ファン4枚
+  const bladeMaterial =new THREE.MeshStandardMaterial({color: 0x4a3026});
+  for (let i = 0; i < 4; i++) {
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        1.35 * scale,0.06 * scale,0.32 * scale),bladeMaterial
+    );
+    // 羽根を中心から少し外へ
+    blade.position.x = 0.75 * scale;
+    // 回転用Group
+    const bladeGroup = new THREE.Group();
+    bladeGroup.rotation.y =i * Math.PI / 2;
+    bladeGroup.add(blade);
+    fanGroup.add(bladeGroup);
+  }
+  // 下側の照明
+  const bulbMaterial =
+    new THREE.MeshStandardMaterial({
+      color: 0xffe4a0,emissive: 0xffc85a,emissiveIntensity: 1.2
+    });
+  const bulbPositions = [
+    [-0.28, 0],[ 0.28, 0],[0, -0.28],[0,  0.28]
+  ];
+  bulbPositions.forEach(pos => {
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(
+        0.16 * scale,16,16),bulbMaterial
+    );
+    bulb.position.set(pos[0] * scale,-0.38 * scale,pos[1] * scale);
+    fanGroup.add(bulb);
+  });
+  // 実際の光
+  const pointLight =new THREE.PointLight(0xffe0a0, 1.5,20);
+  pointLight.position.set(0,-0.45 * scale,0);
+  pointLight.castShadow = true;
+  fanGroup.add(pointLight);
+  // 全体位置
+  fanGroup.position.set(x, y, z);
+  scene.add(fanGroup);
+  return {group: fanGroup,light: pointLight,bulbs: bulbMaterial};
+}
+
+function createTimelineRuler() {
+  const ruler = document.getElementById("timelineRuler");
+  const keyframeInner = document.getElementById("keyframeInner");
+  // 既存の秒数表示を消す
+  ruler.querySelectorAll(".timeMark").forEach(mark => mark.remove());
+  // 幅を計算
+  const labelWidth = 150;
+  const timelineWidth = timelineDuration * pixelsPerSecond;
+  const totalWidth = labelWidth + timelineWidth;
+  // keyframeInnerの幅も更新
+  keyframeInner.style.width = timelineWidth + "px";
+  // 0秒〜曲の長さまで目盛り作成
+  for (let i = 0; i <= Math.ceil(timelineDuration); i++) {
+    const mark = document.createElement("div");
+    mark.className = "timeMark";
+    mark.style.left = (labelWidth + i * pixelsPerSecond) + "px";
+    mark.textContent = i + "s";
+    ruler.appendChild(mark);
+  }
+  // スライダーの最大値も更新
+  document.getElementById("timeSlider").max = timelineDuration;
+}
+
+function handleAudioFile(event) {
+  event.target.blur();
+  const file = event.target.files[0];
+  if (!file) {
+    timelineDuration = 60;
+    audioBuffer = null;
+    document.getElementById("durationInput").value = 60;
+    createTimelineRuler();
+    redrawTimelineTracks();
+    return;
+  }
+  audio.src = URL.createObjectURL(file);
+  audio.onloadedmetadata = function() {
+    timelineDuration = audio.duration;
+    document.getElementById("durationInput").value =
+      Math.ceil(timelineDuration);
+    document.getElementById("timeSlider").max =
+      timelineDuration;
+    if (currentTime > timelineDuration) {
+      currentTime = 0;
+    }
+    createTimelineRuler();
+    redrawTimelineTracks();
+  };
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const arrayBuffer = e.target.result;
+    if (!audioContext) {
+      audioContext = new AudioContext();
+    }
+    audioContext.decodeAudioData(
+      arrayBuffer,
+      function(buffer) {
+        audioBuffer = buffer;
+        redrawTimelineTracks();
+      }
+    );
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function drawWaveformToCanvas(canvas, buffer) {
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+  const data = buffer.getChannelData(0);
+  const step = Math.ceil(data.length / width);
+  const amp = height / 2;
+  ctx.fillStyle = "rgba(120, 120, 255, 0.8)";
+  for (let i = 0; i < width; i++) {
+    let min = 1.0;
+    let max = -1.0;
+    for (let j = 0; j < step; j++) {
+      const value = data[(i * step) + j];
+      if (value < min) min = value;
+      if (value > max) max = value;
+    }
+    ctx.fillRect(
+      i,(1 + min) * amp,1,
+      Math.max(1, (max - min) * amp)
+    );
+  }
+}
+
+function addTrackLabel(name, row) {
+  const label = document.createElement("div");
+  label.className = "trackLabel";
+  label.textContent = name;
+  label.style.top = (row * TRACK_HEIGHT) + "px";
+  label.style.position = "absolute";
+  document.getElementById("trackLabels").appendChild(label);
+}
+
+function fixTrackLabelsPosition() {
+  const keyframeArea =document.getElementById("keyframeArea");
+  const trackLabels =document.getElementById("trackLabels");
+  const rulerHeader =document.getElementById("rulerHeader");
+  const offset = keyframeArea.scrollLeft;
+  trackLabels.style.transform =`translateX(${offset}px)`;
+  rulerHeader.style.transform =`translateX(${offset}px)`;
+}
+
+function syncTimelineScroll() {
+  const ruler = document.getElementById("timelineRuler");
+  const keyframeArea =document.getElementById("keyframeArea");
+  let syncingFromRuler = false;
+  let syncingFromKeyframe = false;
+  // 上 → 下
+  ruler.addEventListener("scroll", () => {
+    if (syncingFromKeyframe) return;
+    syncingFromRuler = true;
+    keyframeArea.scrollLeft = ruler.scrollLeft;
+    fixTrackLabelsPosition();
+    syncingFromRuler = false;
+  });
+  // 下 → 上
+  keyframeArea.addEventListener("scroll", () => {
+    fixTrackLabelsPosition();
+    if (syncingFromRuler) return;
+    syncingFromKeyframe = true;
+    ruler.scrollLeft = keyframeArea.scrollLeft;
+    syncingFromKeyframe = false;
+  });
+}
+
+function updateTimelineHeight() {
+  const minHeight = 240;
+  const totalHeight = Math.max(
+    minHeight,
+    objects.length * TRACK_HEIGHT
+  );
+  document.getElementById("trackLabels").style.height =
+    totalHeight + "px";
+  document.getElementById("keyframeInner").style.height =
+    totalHeight + "px";
+}
+
+function updateRoomSize() {
+  roomWidth = Number(
+    document.getElementById("roomWidthInput").value
+  );
+  roomDepth = Number(
+    document.getElementById("roomDepthInput").value
+  );
+  roomHeight = Number(
+    document.getElementById("roomHeightInput").value
+  );
+  if (
+    roomWidth <= 0 ||
+    roomDepth <= 0 ||
+    roomHeight <= 0
+  ) {
+    alert("1以上の数字を入力してください");
+    return;
+  }
+  createRoom();
+}
+
+function createTrackLine(trackIndex) {
+  const line = document.createElement("div");
+  line.className = "trackLine";
+  line.style.position = "absolute";
+  line.style.left = "0px";
+  line.style.top =((trackIndex + 1) * TRACK_HEIGHT) + "px";
+  line.style.width =(timelineDuration * pixelsPerSecond) + "px";
+  line.style.height = "1px";
+  line.style.background = "#555";
+  document
+    .getElementById("keyframeInner")
+    .appendChild(line);
+}
+
+function redrawTimelineTracks() {
+  // ラベルを全部消す
+  document
+    .querySelectorAll(".trackLabel")
+    .forEach(label => label.remove());
+  // 横線を全部消す
+  document
+    .querySelectorAll(".trackLine")
+    .forEach(line => line.remove());
+  // 波形を全部消す
+  document
+    .querySelectorAll(".waveformCanvas")
+    .forEach(canvas => canvas.remove());
+  // 現在残っているライトに合わせて作り直す
+  objects.forEach((obj, index) => {
+    addTrackLabel(obj.userData.name, index);
+    createTrackLine(index);
+    createWaveformCanvas(index);
+  });
+  updateTimelineHeight();
+  updateKeyframePositions();
+}
+
+function updateKeyframePositions() {
+  const keyframes = document.querySelectorAll(".keyframe");
+  keyframes.forEach(keyframe => {
+    // この●がどのライトのものか取得
+    const targetName = keyframe.dataset.target;
+    // 現在のobjectsの中で何番目にいるか調べる
+    const trackIndex = objects.findIndex(
+      obj => obj.userData.name === targetName
+    );
+    // 対象ライトがもう存在しない場合
+    if (trackIndex === -1) {
+      keyframe.remove();
+      return;
+    }
+    // 現在のライト順に合わせて●の高さを更新
+    keyframe.style.top =
+      (trackIndex * TRACK_HEIGHT + KEYFRAME_TOP_OFFSET) + "px";
+  });
+}
+
+function createWaveformCanvas(trackIndex){
+  if(!audioBuffer) return;
+  const canvas =document.createElement("canvas");
+  canvas.className="waveformCanvas";
+  const width =timelineDuration * pixelsPerSecond;
+  const height =60;
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+  canvas.style.position = "absolute";
+  canvas.style.left = "0px";
+  canvas.style.top =(trackIndex * TRACK_HEIGHT + 8) + "px";
+  document
+    .getElementById("keyframeInner")
+    .appendChild(canvas);
+  drawWaveformToCanvas(canvas,audioBuffer);
+}
+
+function addKeyframe(event) {
+  const keyframeArea =document.getElementById("keyframeArea");
+  // クリック位置取得
+  const rect =keyframeArea.getBoundingClientRect();
+  const labelWidth = 150;
+  const x =event.clientX-rect.left+keyframeArea.scrollLeft-labelWidth;
+  // 秒数変換
+  const time = x / 50;
+  // キーフレーム作成
+  const keyframe =document.createElement("div");
+  keyframe.className ="keyframe";
+  // 位置
+  keyframe.style.left =x + "px";
+  const trackIndex = objects.indexOf(selectedObject);
+  keyframe.style.top = (trackIndex * TRACK_HEIGHT + KEYFRAME_TOP_OFFSET) + "px";
+  // 情報保存
+  keyframe.dataset.time =time;
+  // 色保存
+  keyframe.dataset.color =selectedObject.userData.lightColor;
+  keyframe.dataset.isOn =selectedObject.userData.isOn;
+  if (selectedObject.userData.type === "テープライト") {
+    keyframe.dataset.rotation =selectedObject.rotation.y;
+  }
+  if (selectedObject.userData.type === "ムービングライト") {
+    keyframe.dataset.rotation =selectedObject.userData.head.rotation.y;
+    keyframe.dataset.tilt =selectedObject.userData.tiltHead.rotation.x;
+  }
+  keyframe.dataset.target =selectedObject.userData.name;
+  // 表示
+  keyframe.title =time.toFixed(1) + "s";
+  document.getElementById("keyframeInner").appendChild(keyframe);
+  keyframe.addEventListener("mousedown",
+   function(event) {
+     draggingKeyframe = keyframe;
+     movedKeyframe = false;
+     // 前回キーフレーム選択解除
+     if (selectedKeyframe) {
+       selectedKeyframe.classList.remove("selectedKeyframe");
+      }
+     // 新しくキーフレーム選択
+     selectedKeyframe = keyframe;
+     selectedKeyframe.classList.add("selectedKeyframe");
+     // 対象ライトも選択する
+     selectObjectFromKeyframe(keyframe);
+     // UI更新
+     updateSelectedKeyframeUI();
+     event.stopPropagation();
+    }
+  );
+  keyframe.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+  keyframe.style.background =selectedObject.userData.lightColor;
+   // イベント伝播停止
+  event.stopPropagation();
+  // 前回選択解除
+  document
+   .querySelectorAll(".keyframe")
+   .forEach(kf => {kf.classList.remove("selectedKeyframe");
+  });
+  // 選択
+  selectedKeyframe = keyframe;
+  // 黄色枠追加
+  keyframe.classList.add("selectedKeyframe");
+  updateSelectedKeyframeUI();
+}
+
+function createCopiedKeyframe() {
+  const keyframe = document.createElement("div");
+  keyframe.className = "keyframe";
+  // コピー元の時間から少し右にずらして貼り付け
+  const copiedTime = Number(selectedKeyframe.dataset.time);
+  const pasteTime = Math.min(copiedTime + 0.5, timelineDuration);
+  const x = pasteTime * pixelsPerSecond;
+  keyframe.style.left = x + "px";
+  const trackIndex = objects.indexOf(selectedObject);
+  keyframe.style.top =(trackIndex * TRACK_HEIGHT + KEYFRAME_TOP_OFFSET) + "px";
+  keyframe.dataset.time = pasteTime;
+  keyframe.dataset.color = copiedKeyframeData.color;
+  keyframe.dataset.isOn = copiedKeyframeData.isOn;
+  keyframe.dataset.rotation = copiedKeyframeData.rotation;
+  if (copiedKeyframeData.tilt !== undefined) {
+    keyframe.dataset.tilt = copiedKeyframeData.tilt;
+  }
+  keyframe.dataset.target = selectedObject.userData.name;
+  keyframe.style.background = copiedKeyframeData.color;
+  keyframe.title = pasteTime.toFixed(1) + "s";
+  document.getElementById("keyframeInner").appendChild(keyframe);
+  // ここが重要：貼り付けた●にもドラッグ処理を付ける
+  keyframe.addEventListener("mousedown", function(event) {
+    draggingKeyframe = keyframe;
+    movedKeyframe = false;
+    if (selectedKeyframe) {
+      selectedKeyframe.classList.remove("selectedKeyframe");
+    }
+    selectedKeyframe = keyframe;
+    selectedKeyframe.classList.add("selectedKeyframe");
+    selectObjectFromKeyframe(keyframe);
+    updateSelectedKeyframeUI();
+    event.stopPropagation();
+  });
+  keyframe.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+  document.querySelectorAll(".keyframe").forEach(kf => {
+    kf.classList.remove("selectedKeyframe");
+  });
+  selectedKeyframe = keyframe;
+  keyframe.classList.add("selectedKeyframe");
+  updateSelectedKeyframeUI();
+}
+
+// UI操作
+function toggleLight() {
+  roomLightOn = !roomLightOn;
+  // シーリングファン1
+  if (ceilingFan1) {
+    // 実際の光
+    ceilingFan1.light.intensity =roomLightOn ? 1.5 : 0;
+    // 電球の見た目
+    ceilingFan1.bulbs.emissiveIntensity =roomLightOn ? 1.2 : 0;
+  }
+  // シーリングファン2
+  if (ceilingFan2) {
+    // 実際の光
+    ceilingFan2.light.intensity =roomLightOn ? 1.5 : 0;
+    // 電球の見た目
+    ceilingFan2.bulbs.emissiveIntensity =roomLightOn ? 1.2 : 0;
+  }
+}
+
+function toggleLoop() {
+  isLoop = !isLoop;
+  const loopButton =document.getElementById("loopButton");
+  if (isLoop) {
+    loopButton.textContent = "ループON";
+    loopButton.classList.add("loopOn");
+  } else {
+    loopButton.textContent = "ループOFF";
+    loopButton.classList.remove("loopOn");
+  }
+}
+
+function playTimeline() {
+  lastSentMovingTiltDegree = null;
+  isPlaying = true;
+  if (audio.src) {
+    audio.currentTime = currentTime;
+    audio.play();
+  }
+}
+
+//一時停止
+function pauseTimeline() {
+  isPlaying = false;
+  if (audio.src) {
+    audio.pause();
+  }
+}
+
+function turnOffAllLights() {
+  objects.forEach(obj => {
+    obj.userData.isOn = false;
+    // テープライト
+    if (obj.userData.type ==="テープライト") {
+      obj.userData.lightSurface.material.color.set(0x555555);
+      obj.userData.glow.visible = false;
+    }
+    // ムービングライト
+    else if (obj.userData.type ==="ムービングライト") {
+      obj.userData.cap.material.color.set(0x555555);
+      obj.userData.beam.visible = false;
+      if (obj.userData.realLight) {
+        obj.userData.realLight.intensity = 0;
+      }
+    }
+    // スマートライト
+    else if (obj.userData.type ==="スマートライト") {
+      obj.userData.lightSurface.material.color.set(0x555555);
+      obj.userData.lightSurface.material.emissive.set(0x000000);
+      obj.userData.lightSurface.material.emissiveIntensity = 0;
+      obj.userData.glow.visible = false;
+      if (obj.userData.realLight) {
+        obj.userData.realLight.intensity = 0;
+      }
+      sendSmartLightPower(obj.userData.smartLightId,false);
+    }
+    // 実照明
+    if (obj.userData.realLights) {
+      obj.userData.realLights.forEach(
+        light => {light.intensity = 0;}
+      );
+    }
+  });
+  // 実機テープライト消灯
+  sendHuePower(false);
+  // 実機DMX消灯
+  sendColorToRealLight(0,0,0,0,0);
+}
+
+function stopTimeline() {
+  // 再生停止
+  isPlaying = false;
+  if (audio.src) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+  // 時間を0へ
+  currentTime = 0;
+  // スライダー戻す
+  document.getElementById("timeSlider").value = 0;
+  // 時間表示戻す
+  document.getElementById("currentTime").textContent = "0.0s";
+  // 赤線を0秒位置へ戻す
+  document.getElementById("playhead").style.left = "150px";
+  document.getElementById("playheadLine").style.left = "150px";
+  // スクロールも左端へ戻す
+  document.getElementById("timelineRuler").scrollLeft = 0;
+  document.getElementById("keyframeArea").scrollLeft = 0;
+  // 全ムービングライトを初期向きへ
+  objects.forEach(obj => {
+    if (obj.userData.type === "ムービングライト") {
+      // 3D側
+      obj.userData.head.rotation.y = 0;
+      obj.userData.tiltHead.rotation.x = -Math.PI / 6;
+      // 消灯表示
+      obj.userData.isOn = false;
+      obj.userData.cap.material.color.set(0x555555);
+      obj.userData.beam.visible = false;
+    }
+  });
+  // 実機も初期向きへ
+  sendMovingPosition(0,-30);
+  // 実機Hueを消灯
+  sendHuePower(false);
+  // 実機DMXムービングライトを消灯
+  sendColorToRealLight(0, 0, 0, 0, 0);
+  // 選択中がムービングライトならUIも更新
+  if (
+    selectedObject &&
+    selectedObject.userData.type === "ムービングライト"
+  ) {
+    updateMovingRotationUI();
+    updateMovingTiltUI();
+  }
+  // 連続送信防止リセット
+  lastHueSentKeyframe = null;
+  turnOffAllLights();
+}
+
+function updateTimelineTime(value) {
+  currentTime = Number(value);
+  document.getElementById("currentTime").textContent =
+    currentTime.toFixed(1) + "s";
+  scrollTimelineToCurrentTime();
+}
+
+function changeTimelineDuration(value) {
+  // 空欄のときは、まだ入力途中なので何もしない
+  if (value === "") {
+    return;
+  }
+  const newDuration = Number(value);
+  if (!newDuration || newDuration <= 0) {
+    alert("1秒以上の数字を入力してください");
+    document.getElementById("durationInput").value = timelineDuration;
+    return;
+  }
+  timelineDuration = newDuration;
+  document.getElementById("timeSlider").max = timelineDuration;
+  if (currentTime > timelineDuration) {
+    currentTime = timelineDuration;
+  }
+  createTimelineRuler();
+  redrawTrackLines();
+  scrollTimelineToCurrentTime();
+}
+
+function scrollTimelineToCurrentTime() {
+  const ruler = document.getElementById("timelineRuler");
+  const keyframeArea = document.getElementById("keyframeArea");
+  const timelineX = currentTime * pixelsPerSecond;
+  // 赤線を少し左寄りに固定する位置
+  const fixedPlayheadX = 220;
+  const scrollPosition = timelineX - fixedPlayheadX;
+  const maxScroll =
+    keyframeArea.scrollWidth - keyframeArea.clientWidth;
+  const scrollX = Math.min(
+    Math.max(0, scrollPosition),
+    maxScroll
+  );
+  ruler.scrollLeft = scrollX;
+  keyframeArea.scrollLeft = scrollX;
+}
+
+function toggleWallMenu() {
+  const wallMenu =document.getElementById("wallMenu");
+  if (wallMenu.style.display === "block") {
+    wallMenu.style.display = "none";
+  } else {
+    wallMenu.style.display = "block";
+  }
+}
+
+function addMovingLight(place = "floor", wallSide = null) {
+  movingLightCount++;
+  const movingLight = new THREE.Group();
+  // 土台
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 0.5, 1),
+    new THREE.MeshStandardMaterial({ color: 0x222222 })
+  );
+  movingLight.add(base);
+  movingLight.userData.base = base;
+  // ヘッド全体
+  const yokeGroup = new THREE.Group();
+  // ヘッドグループ
+  const headGroup = new THREE.Group();
+  // 半球
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(
+      0.4,32,32,0,Math.PI * 2,0,Math.PI / 2
+    ),
+    new THREE.MeshStandardMaterial({ color: 0x111111 })
+  );
+  dome.rotation.x = Math.PI;
+  headGroup.add(dome);
+  // フタ
+  const cap = new THREE.Mesh(
+    new THREE.CircleGeometry(0.4, 32),
+    new THREE.MeshStandardMaterial({ color: 0x555555 })
+  );
+  cap.position.y = -0.001;
+  cap.rotation.x = -Math.PI / 2;
+  headGroup.add(cap);
+  // 光の線
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.38,1.2,5,32),
+    new THREE.MeshBasicMaterial({
+      color: 0xffff00,transparent: true,opacity: 0.30,
+      // ★光を加算して明るく見せる
+      blending: THREE.AdditiveBlending,
+      // ★透明物同士で不自然になりにくくする
+      depthWrite: false,side: THREE.DoubleSide
+    })
+  );
+  // 実際に周囲を照らすSpotLight
+  const realLight = new THREE.SpotLight(
+    0x00ccff,0,30,Math.PI / 8,0.4,1.5);
+  realLight.position.set(0,0,0);
+  // ヘッドに追加
+  headGroup.add(realLight);
+  // SpotLightが向く先
+  const lightTarget =new THREE.Object3D();
+  lightTarget.position.set(0,5,0);
+  headGroup.add(lightTarget);
+  realLight.target =lightTarget;
+  // 重くなりやすいので影はOFF
+  realLight.castShadow = false;
+  // 保存
+  movingLight.userData.realLight =realLight;
+  beam.geometry.translate(0, -2.5, 0);
+  beam.position.y = -0.02;
+  beam.position.z = 0;
+  beam.rotation.z = Math.PI;
+  beam.visible = false;
+  headGroup.add(beam);
+  // ヘッド位置
+  headGroup.position.y = 0.8;
+  // 初期角度
+  headGroup.rotation.y = Math.PI / 4;
+  headGroup.rotation.x = -Math.PI / 6;
+  yokeGroup.add(headGroup);
+  movingLight.add(yokeGroup);
+  // 設置位置
+  const visualWidth = roomWidth * ROOM_SCALE;
+  const visualDepth = roomDepth * ROOM_SCALE;
+  const visualHeight = roomHeight * ROOM_SCALE;
+  const halfW = visualWidth / 2;
+  const halfD = visualDepth / 2;
+  // 床に設置
+  if (place === "floor") {
+    movingLight.position.set(
+      Math.random() * (visualWidth - 2) - (halfW - 1),
+      0,
+      Math.random() * (visualDepth - 2) - (halfD - 1)
+    );
+  }
+  // 天井に設置
+  else if (place === "ceiling") {
+    movingLight.position.set(
+      Math.random() * (visualWidth - 2) - (halfW - 1),
+      visualHeight,
+      Math.random() * (visualDepth - 2) - (halfD - 1)
+    );
+    movingLight.rotation.z = Math.PI;
+  }
+  // 壁に設置
+  else if (place === "wall") {
+    if (wallSide === "front") {
+      movingLight.position.set(
+        Math.random() * (visualWidth - 2) - (halfW - 1),
+        Math.random() * (visualHeight - 2) + 1,
+        halfD
+      );
+      movingLight.rotation.x = -Math.PI / 2;
+      movingLight.userData.wallSide = "front";
+    }
+    else if (wallSide === "left") {
+      movingLight.position.set(
+        -halfW,
+        Math.random() * (visualHeight - 2) + 1,
+        Math.random() * (visualDepth - 2) - (halfD - 1)
+      );
+      movingLight.rotation.set(0, Math.PI, Math.PI / 2);
+      movingLight.userData.wallSide = "left";
+    }
+    else if (wallSide === "back") {
+      movingLight.position.set(
+        Math.random() * (visualWidth - 2) - (halfW - 1),
+        Math.random() * (visualHeight - 2) + 1,
+        -halfD
+      );
+      movingLight.rotation.x = Math.PI / 2;
+      movingLight.userData.wallSide = "back";
+    }
+    else if (wallSide === "right") {
+      movingLight.position.set(
+        halfW,
+        Math.random() * (visualHeight - 2) + 1,
+        Math.random() * (visualDepth - 2) - (halfD - 1)
+      );
+      movingLight.rotation.set(0, Math.PI, -Math.PI / 2);
+      movingLight.userData.wallSide = "right";
+    }
+  }
+  // 保存
+  movingLight.userData.head = yokeGroup;
+  movingLight.userData.tiltHead = headGroup;
+  movingLight.userData.cap = cap;
+  movingLight.userData.beam = beam;
+  movingLight.userData.type = "ムービングライト";
+  movingLight.userData.mountType = place;
+  movingLight.userData.name =
+    "ムービングライト" + movingLightCount;
+  movingLight.userData.isOn = false;
+  movingLight.userData.lightColor = "#00ccff";
+  scene.add(movingLight);
+  objects.push(movingLight);
+  addTrackLabel(
+    movingLight.userData.name,
+    objects.length - 1
+  );
+  updateTimelineHeight();
+  redrawTimelineTracks();
+  updateRealLighting(movingLight);
+}
+
+function updateMovingTiltSlider(value) {
+  if (!selectedObject) return;
+  if (selectedObject.userData.type !== "ムービングライト") return;
+  const degree = Number(value);
+  const tilt = THREE.MathUtils.degToRad(degree);
+  selectedObject.userData.tiltHead.rotation.x = tilt;
+  if (selectedKeyframe) {
+    selectedKeyframe.dataset.tilt = tilt;
+  }
+  document.getElementById("movingTiltValue").value =
+    Math.round(degree);
+  sendMovingTiltOnly(degree);
+}
+
+function updateMovingTiltUI() {
+  if (!selectedObject) return;
+  if (selectedObject.userData.type !== "ムービングライト") return;
+  const tiltHead = selectedObject.userData.tiltHead;
+  const degree = THREE.MathUtils.radToDeg(tiltHead.rotation.x);
+  document.getElementById("movingTiltSlider").value =
+    degree;
+  document.getElementById("movingTiltValue").value =
+    Math.round(degree);
+}
+
+// テープライト（長方形）
+function addTapeLight() {
+  tapeLightCount++;
+  // テープライト全体
+  const tapeGroup = new THREE.Group();
+  // U字の設定
+  const radius = 1.4;       // U字の大きさ
+  const thickness = 0.18;  // 黒い本体の太さ
+  const height = 0.25;     // 発光面の高さ
+  const segments = 32;     // なめらかさ
+  // 切れ目の広さ
+  const startAngle = Math.PI * 0.95;
+  const endAngle   = Math.PI * 2.05;
+  const arcLength =endAngle - startAngle;
+  // ① U字型の黒い本体
+  const bodyPoints = [];
+  for (let i = 0; i <= segments; i++) {
+    const t =i / segments;
+    const angle =startAngle +arcLength * t;
+    bodyPoints.push(
+      new THREE.Vector3(Math.cos(angle) * radius,0,Math.sin(angle) * radius)
+    );
+  }
+  // 点を滑らかにつなぐ
+  const bodyCurve =new THREE.CatmullRomCurve3(bodyPoints);
+  // U字型のチューブ
+  const body =new THREE.Mesh(
+      new THREE.TubeGeometry(
+        bodyCurve,segments,thickness / 2,8,false
+      ),
+      new THREE.MeshStandardMaterial({color: 0x111111})
+    );
+  tapeGroup.add(body);
+  // 選択枠用
+  tapeGroup.userData.body =body;
+  // ② 内側の発光面
+  // ★複数のPlaneではなく1枚
+  const lightMaterial =new THREE.MeshBasicMaterial({
+      color: 0x555555,side: THREE.DoubleSide
+    });
+  // 頂点保存
+  const vertices = [];
+  // 面をつなぐ番号
+  const indices = [];
+  // 黒いチューブより少し内側
+  const innerRadius =radius -thickness / 2 -0.01;
+  // U字に沿って頂点を作る
+  for (let i = 0; i <= segments; i++) {
+    const t =i / segments;
+    const angle =startAngle +arcLength * t;
+    const x =Math.cos(angle) *innerRadius;
+    const z =Math.sin(angle) *innerRadius;
+    // 発光面の上側
+    vertices.push(x,height / 2,z);
+    // 発光面の下側
+    vertices.push(x,-height / 2,z);
+  }
+  // 頂点同士を面としてつなぐ
+  for (let i = 0; i < segments; i++) {
+    const a = i * 2;
+    const b = i * 2 + 1;
+    const c = i * 2 + 2;
+    const d = i * 2 + 3;
+    indices.push(a, b, c,b, d, c);
+  }
+  // Geometry作成
+  const lightGeometry =new THREE.BufferGeometry();
+  lightGeometry.setAttribute("position",
+    new THREE.Float32BufferAttribute(vertices,3)
+  );
+  lightGeometry.setIndex(indices);
+  lightGeometry.computeVertexNormals();
+  // ★1枚の連続した発光面
+  const lightSurface =new THREE.Mesh(lightGeometry,lightMaterial);
+  tapeGroup.add(lightSurface);
+  // ③ 光の広がり glow
+  const glowMaterial =
+    new THREE.MeshBasicMaterial({
+      color: 0xff00ff,transparent: true,opacity: 0.20,side: THREE.DoubleSide
+    });
+  const glow =new THREE.Group();
+  // 既存処理との互換性
+  glow.material =glowMaterial;
+  // glowは小さいパーツを
+  // U字に沿って並べる
+  const circumference =arcLength * radius;
+  const segmentWidth =circumference /segments *1.08;
+  for (let i = 0; i < segments; i++) {
+    const t =i / segments;
+    const angle =startAngle +arcLength * t;
+    const glowRadius =radius -thickness / 2 -0.12;
+    const glowPart =new THREE.Mesh(
+        new THREE.BoxGeometry(segmentWidth,0.12,0.25),
+        glowMaterial
+      );
+    glowPart.position.set(
+      Math.cos(angle) *glowRadius,0,
+      Math.sin(angle) *glowRadius
+    );
+    // 中央方向へ向ける
+    glowPart.rotation.y =-angle -Math.PI / 2;
+    glow.add(glowPart);
+  }
+  // 最初はOFF
+  glow.visible = false;
+  tapeGroup.add(glow);
+  // ④ 実際に周囲を照らす光
+  // ★forループの外なので2個だけ
+  const realLight1 =new THREE.PointLight(0xff00ff,0,6,2);
+  realLight1.position.set(-0.7,0.25,0);
+  realLight1.castShadow =false;
+  tapeGroup.add(realLight1);
+  const realLight2 =new THREE.PointLight(0xff00ff,0,6,2);
+  realLight2.position.set(0.7,0.25,0);
+  realLight2.castShadow =false;
+  tapeGroup.add(realLight2);
+  // 2つを保存
+  tapeGroup.userData.realLights = [realLight1,realLight2];
+  // ⑤ U字全体の見た目
+  // 横に広げる
+  tapeGroup.scale.set(1.5,1,1);
+  // 初期方向
+  tapeGroup.rotation.y =Math.PI *3/ 2;
+  // ⑥ 最初の位置
+  tapeGroup.position.set( Math.random() * 4 - 2,0.15, Math.random() * 4 - 2);
+  // ⑦ 情報保存
+  tapeGroup.userData.type ="テープライト";
+  tapeGroup.userData.name ="テープライト" +tapeLightCount;
+  // 家具スナップを使えるように
+  tapeGroup.userData.mountType ="floor";
+  // ON/OFF
+  tapeGroup.userData.isOn =false;
+  // 保存色
+  tapeGroup.userData.lightColor ="#ff00ff";
+  // 発光面
+  tapeGroup.userData.lightSurface =lightSurface;
+  // glow
+  tapeGroup.userData.glow =glow;
+  // ⑧ シーンへ追加
+  scene.add(tapeGroup);
+  objects.push(tapeGroup);
+  addTrackLabel(tapeGroup.userData.name,objects.length - 1);
+  redrawTimelineTracks();
+  updateRealLighting(tapeGroup);
+}
+
+function addSmartBulb() {
+  smartBulbCount++;
+  // スマートライト全体
+  const bulbGroup = new THREE.Group();
+  // ① 金属の口金部分
+  const socket = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22,0.22,0.35,32),
+    new THREE.MeshStandardMaterial({
+      color: 0x888888,metalness: 0.8,roughness: 0.35
+    })
+  );
+  socket.position.y = 0.175;
+  bulbGroup.add(socket);
+  // ② 白い根元部分
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.34,0.22,0.38,32),
+    new THREE.MeshStandardMaterial({color: 0xf5f5f5})
+  );
+  neck.position.y = 0.53;
+  bulbGroup.add(neck);
+  // ③ 光る電球部分
+  const bulbSurface = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42,32,32),
+    new THREE.MeshStandardMaterial({
+      color: 0x555555,emissive: 0x000000,emissiveIntensity: 0
+    })
+  );
+  // 少し縦長にする
+  bulbSurface.scale.set(1,1.15,1);
+  bulbSurface.position.y = 0.93;
+  bulbGroup.add(bulbSurface);
+  // ④ 光の広がり
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.55,32,32),
+    new THREE.MeshBasicMaterial({
+      color: 0xff00ff,transparent: true,opacity: 0.18})
+  );
+  glow.scale.set(1,1.15,1);
+  glow.position.y = 0.93;
+  // 最初はOFF
+  glow.visible = false;
+  bulbGroup.add(glow);
+  // =========================
+  // 周囲を実際に照らす光
+  // =========================
+  const realLight =new THREE.PointLight(0xff00ff,0,8,2);
+  realLight.position.set(0,0.9,0);
+  realLight.castShadow = false;
+  bulbGroup.add(realLight);
+  bulbGroup.userData.realLight =realLight;
+  // ⑤ 最初の位置
+  bulbGroup.position.set(Math.random()*4-2,0,Math.random()*4-2);
+  // ⑥ 情報保存
+  bulbGroup.userData.type ="スマートライト";
+  bulbGroup.userData.name ="スマートライト" +smartBulbCount;
+  bulbGroup.userData.smartLightId = smartBulbCount;
+  // 家具スナップを使えるようにする
+  bulbGroup.userData.mountType ="floor";
+  bulbGroup.userData.isOn =false;
+  bulbGroup.userData.lightColor ="#ff00ff";
+  // 色変更対象
+  bulbGroup.userData.lightSurface =bulbSurface;
+  bulbGroup.userData.glow =glow;
+  // 選択枠用
+  bulbGroup.userData.body =neck;
+  bulbGroup.scale.set(0.5, 0.5, 0.5);
+  // ⑦ シーンへ追加
+  scene.add(bulbGroup);
+  objects.push(bulbGroup);
+  addTrackLabel(bulbGroup.userData.name,objects.length - 1);
+  redrawTimelineTracks();
+  updateRealLighting(bulbGroup);
+}
+
+function toggleRealLighting(enabled) {
+  realisticLightingEnabled = enabled;
+  updateAllRealLighting();
+}
+
+function updateAllRealLighting() {
+  objects.forEach(obj => {updateRealLighting(obj);});
+
+}
+
+function updateRealLighting(obj) {
+  // 実照明モードOFF
+  if (!realisticLightingEnabled) {
+    if (obj.userData.realLight) {
+      obj.userData.realLight.intensity = 0;
+    }
+    if (obj.userData.realLights) {
+      obj.userData.realLights.forEach(light => {
+        light.intensity = 0;
+      });
+    }
+    return;
+  }
+  // ライト本体がOFFなら実照明もOFF
+  if (!obj.userData.isOn) {
+    if (obj.userData.realLight) {
+      obj.userData.realLight.intensity = 0;
+    }
+    if (obj.userData.realLights) {
+      obj.userData.realLights.forEach(light => {
+        light.intensity = 0;
+      });
+    }
+    return;
+  }
+  // ムービングライト
+  if (obj.userData.type ==="ムービングライト") {
+    obj.userData.realLight.color.set(obj.userData.lightColor);
+    obj.userData.realLight.intensity = 3;
+  }
+  // スマートライト
+  else if (obj.userData.type ==="スマートライト") {
+    obj.userData.realLight.color.set(obj.userData.lightColor);
+    obj.userData.realLight.intensity = 2;
+  }
+  // テープライト
+  else if (obj.userData.type ==="テープライト"
+  ) {
+    obj.userData.realLights.forEach(light => {
+      light.color.set(obj.userData.lightColor);
+      light.intensity = 1.5;
+    });
+  }
+}
+
+// マウス操作
+function onMouseDown(event) {
+  event.preventDefault();
+  mouse.x =(event.offsetX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y =-(event.offsetY / renderer.domElement.clientHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  // ✋ 画面移動モード
+  if (controlMode === "hand") {
+    isDragging = true;
+    renderer.domElement.style.cursor = "grabbing";
+    return;
+  }
+  // プレーン選択モード
+  if (controlMode === "plane") {
+    const hits = raycaster.intersectObjects(wallBlocks, true);
+    if (hits.length > 0) {
+      const block = hits[0].object;
+      block.userData.selected =!block.userData.selected;
+      // 選択
+      if (block.userData.selected) {
+        block.material.color.set(0x66cc66);
+        block.material.opacity = 0.55;
+        if (!selectedBlocks.includes(block)) {
+          selectedBlocks.push(block);
+        }
+      }
+      // 選択解除
+      else {
+        block.material.color.set(0xffffff);
+        block.material.opacity = 0.18;
+        selectedBlocks =selectedBlocks.filter(b => b !== block);
+      }
+    }
+    // プレーンモードではライト選択処理に進ませない
+    return;
+  }
+  // 通常のライト選択・移動モード
+  isDragging = true;
+  const intersects =raycaster.intersectObjects(objects, true);
+  // 何もクリックしていない
+  if (intersects.length === 0) {
+    if (selectedObject) {
+      removeOutline(selectedObject);
+    }
+    selectedObject = null;
+    showDefaultUI();
+    return;
+  }
+  // クリック対象取得
+  const clickedObject = intersects[0].object;
+  let newSelectedObject = clickedObject;
+  // 一番上のGroupまでたどる
+  while (
+    newSelectedObject.parent &&
+    newSelectedObject.parent !== scene
+  ) {
+    newSelectedObject = newSelectedObject.parent;
+  }
+  // 同じオブジェクトなら維持
+  if (selectedObject === newSelectedObject) {
+    return;
+  }
+  // 前回選択解除
+  if (selectedObject) {
+    removeOutline(selectedObject);
+  }
+  // 新しく選択
+  selectedObject = newSelectedObject;
+  // キーフレーム編集終了
+  isEditingKeyframe = false;
+  // キーフレーム選択解除
+  if (selectedKeyframe) {
+    selectedKeyframe.classList.remove("selectedKeyframe");
+  }
+  selectedKeyframe = null;
+  updateSelectedKeyframeUI();
+  showObjectUI(selectedObject);
+  addOutline(selectedObject);
+}
+
+function onMouseUp() {
+  isDragging = false;
+  draggingKeyframe = null;
+  if (controlMode === "hand") {
+    renderer.domElement.style.cursor = "grab";
+  }
+  if (movedKeyframe) {
+    justDraggedKeyframe = true;
+    movedKeyframe = false;
+    setTimeout(() => {
+      justDraggedKeyframe = false;
+    }, 50);
+  }
+}
+
+function onMouseWheel(event) {
+  // 3D画面以外なら無視
+  if (!renderer.domElement.contains(event.target)) {
+    return;
+  }
+  event.preventDefault();
+  // カメラが向いている方向を取得
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+  // ズーム速度 小さいほど滑らか
+  const zoomSpeed = 0.03;
+  // 逆になっていたのでマイナスを付ける
+  const moveAmount = -event.deltaY * zoomSpeed;
+  // カメラを向いている方向に前後移動
+  camera.position.addScaledVector(direction, moveAmount);
+  // 距離を保存
+  cameraDistance = camera.position.distanceTo(
+    new THREE.Vector3(0, 0, 0)
+  );
+}
+
+function onMouseMove(event) {
+  // キーフレームをドラッグ中
+  if (draggingKeyframe) {
+    const keyframeArea =document.getElementById("keyframeArea");
+    const rect =keyframeArea.getBoundingClientRect();
+    let x =event.clientX -rect.left -150 +keyframeArea.scrollLeft;
+    if (x < 0) {
+      x = 0;
+    }
+    if (x > 3000) {
+      x = 3000;
+    }
+    const oldX =parseFloat(draggingKeyframe.style.left);
+    if (Math.abs(x - oldX) > 3) {
+      movedKeyframe = true;
+    }
+    draggingKeyframe.style.left =x + "px";
+    const time =x / pixelsPerSecond;
+    draggingKeyframe.dataset.time =time;
+    draggingKeyframe.title =time.toFixed(1) + "s";
+    updateSelectedKeyframeUI();
+    return;
+  }
+  // マウスを押していなければ終了
+  if (!isDragging) {
+    return;
+  }
+  // カメラモード
+  if (controlMode === "camera") {
+    cameraYaw -=event.movementX * 0.005;
+    cameraPitch -=event.movementY * 0.005;
+    const limit =Math.PI / 2 - 0.1;
+    cameraPitch = Math.max(
+      -limit,
+      Math.min(limit, cameraPitch)
+    );
+    camera.position.x =
+      cameraDistance *Math.cos(cameraPitch) *Math.sin(cameraYaw);
+    camera.position.y =
+      cameraDistance *Math.sin(cameraPitch);
+    camera.position.z =
+      cameraDistance *Math.cos(cameraPitch) *Math.cos(cameraYaw);
+    camera.lookAt(cameraTarget);
+    return;
+  }
+  // ✋ 画面移動モード
+  if (controlMode === "hand") {
+   const panSpeed = 0.015;
+   // カメラから見た右方向
+   const right = new THREE.Vector3();
+   right.setFromMatrixColumn(camera.matrix, 0);
+   // カメラから見た上方向
+   const up = new THREE.Vector3();
+   up.setFromMatrixColumn(camera.matrix, 1);
+   // マウスの移動量
+   const moveX = -event.movementX * panSpeed;
+   const moveY = event.movementY * panSpeed;
+   // カメラ自体を移動
+   camera.position.addScaledVector(right, moveX);
+   camera.position.addScaledVector(up, moveY);
+   // 見ている中心位置も同時に移動
+   cameraTarget.addScaledVector(right, moveX);
+   cameraTarget.addScaledVector(up, moveY);
+   // 新しい中心を見る
+   camera.lookAt(cameraTarget);
+   return;
+  }
+  // プレーン選択モード
+  // プレーンモード中はライトを動かさない
+  if (controlMode === "plane") {
+    return;
+  }
+  // オブジェクトモード
+  if (controlMode === "object") {
+    if (!selectedObject) {
+      return;
+    }
+    mouse.x =
+      (event.offsetX /renderer.domElement.clientWidth) *2 -1;
+    mouse.y =
+      -(event.offsetY /renderer.domElement.clientHeight) *2 +1;
+    raycaster.setFromCamera(
+      mouse,camera
+    );
+    const point =new THREE.Vector3();
+    let plane;
+    const mountType =selectedObject.userData.mountType ||"floor";
+    // 表示上の部屋サイズ
+    const visualWidth =roomWidth * ROOM_SCALE;
+    const visualDepth =roomDepth * ROOM_SCALE;
+    const visualHeight =roomHeight * ROOM_SCALE;
+    const halfW =visualWidth / 2;
+    const halfD =visualDepth / 2;
+    /// 床に設置したライト
+    if (mountType === "floor") {
+      // ① 家具にマウスが乗っているか確認
+      const furnitureHits =raycaster.intersectObjects(furnitureSnapSurfaces,true);
+      // 家具にマウスが乗っている
+      if (furnitureHits.length > 0) {
+       const furnitureHit = furnitureHits[0];
+       let snapObject = furnitureHit.object;
+       // snapSurfaceを持っている親まで探す
+       while (snapObject &&!snapObject.userData.snapSurface) {snapObject = snapObject.parent;}
+       if (snapObject) {
+        // マウスが当たっている位置
+        const x = furnitureHit.point.x;
+        const z = furnitureHit.point.z;
+        // 家具の天面の高さ
+        let y = snapObject.userData.snapY;
+        // レコード台のようにGroup内にある場合、親Groupの高さも考慮
+        if (snapObject.parent instanceof THREE.Group) {
+         y += snapObject.parent.position.y;
+        }
+        // ライト本体が家具に埋まらないように少し持ち上げる
+        if (selectedObject.userData.type ==="ムービングライト") {
+         y += 0.25;
+        }
+        else if (selectedObject.userData.type ==="テープライト") {
+         y += 0.10;
+        }
+        else if(
+          selectedObject.userData.type==="スマートライト"
+        ){y+=0.05;}
+        selectedObject.position.set(x,y,z);
+        updatePositionUI(selectedObject);
+        return;
+      }
+    }
+    // ② 家具じゃなければ普通に床
+    plane = new THREE.Plane(new THREE.Vector3(0, 1, 0),0);
+    const hit =raycaster.ray.intersectPlane(plane,point);
+    if (!hit) {return;}
+    const x = Math.max(-halfW + 1,Math.min(halfW - 1, point.x));
+    const z = Math.max(-halfD + 1,Math.min(halfD - 1, point.z));
+    selectedObject.position.set(x,0,z);
+  }
+    // 天井に設置したライト
+    else if (
+      mountType === "ceiling"
+    ) {
+      plane = new THREE.Plane(
+        new THREE.Vector3(0, 1, 0),-visualHeight
+      );
+      const hit =raycaster.ray.intersectPlane(plane,point);
+      if (!hit) {return;}
+      const x = Math.max(-halfW + 1,Math.min(halfW - 1,point.x));
+      const z = Math.max(-halfD + 1,Math.min(halfD - 1,point.z));
+      selectedObject.position.set(x,visualHeight,z);
+    }
+    // 壁に設置したライト
+    else if (
+      mountType === "wall"
+    ) {
+      const wallHits =
+        raycaster
+          .intersectObjects(roomObjects,true)
+          .filter(hit =>hit.object.userData.surface === "wall");
+      if (wallHits.length === 0) {return;}
+      const hit =wallHits[0];
+      const side =hit.object.userData.wallSide;
+      const p =hit.point.clone();
+      // 壁の上下端に少し余白を残す
+      p.y = Math.max(1,Math.min(visualHeight - 1,p.y));
+      // 前壁
+      if (side === "front") {
+        if (
+          !isInsideSelectedBlock(p,"front")
+        ) {
+          return;
+        }
+        const x = Math.max(-halfW + 1,Math.min(halfW - 1,p.x));
+        selectedObject.position.set(x,p.y,halfD);
+        selectedObject.rotation.set(-Math.PI / 2,0,0);
+      }
+      // 左壁
+      else if (
+        side === "left"
+      ) {
+        if (
+          !isInsideSelectedBlock(p,"left")
+        ) {
+          return;
+        }
+        const z = Math.max(
+          -halfD + 1,Math.min(halfD - 1,p.z
+          )
+        );
+        selectedObject.position.set(
+          -halfW,
+          p.y,
+          z
+        );
+        selectedObject.rotation.set(
+          0,
+          Math.PI,
+          Math.PI / 2
+        );
+      }
+      // 後壁
+      else if (
+        side === "back"
+      ) {
+        if (
+          !isInsideSelectedBlock(
+            p,
+            "back"
+          )
+        ) {
+          return;
+        }
+        const x = Math.max(
+          -halfW + 1,
+          Math.min(
+            halfW - 1,
+            p.x
+          )
+        );
+        selectedObject.position.set(
+          x,
+          p.y,
+          -halfD
+        );
+        selectedObject.rotation.set(
+          Math.PI / 2,
+          0,
+          0
+        );
+      }
+      // 右壁
+      else if (
+        side === "right"
+      ) {
+        if (
+          !isInsideSelectedBlock(
+            p,
+            "right"
+          )
+        ) {
+          return;
+        }
+        const z = Math.max(
+          -halfD + 1,
+          Math.min(
+            halfD - 1,
+            p.z
+          )
+        );
+        selectedObject.position.set(
+          halfW,
+          p.y,
+          z
+        );
+        selectedObject.rotation.set(
+          0,
+          Math.PI,
+          -Math.PI / 2
+        );
+      }
+      selectedObject.userData.wallSide =
+        side;
+    }
+    updatePositionUI(
+      selectedObject
+    );
+  }
+}
+
+function showObjectUI(obj) {
+  document.getElementById("defaultUI").style.display = "none";
+  document.getElementById("objectUI").style.display = "block";
+  const tapeUI =document.getElementById("tapeLightUI");
+  const movingUI =document.getElementById("movingLightUI");
+  // 一旦強制的に両方消す
+  tapeUI.style.cssText = "display:none;";
+  movingUI.style.cssText = "display:none;";
+  // テープライト
+  if (obj.userData.type === "テープライト") {
+    tapeUI.style.cssText = "display:block;";
+  }
+  // ムービングライト
+  else if (
+    obj.userData.type === "ムービングライト"
+  ) {
+    movingUI.style.cssText = "display:block;";
+  }
+  else if (obj.userData.type ==="スマートライト") {
+    tapeUI.style.cssText ="display:none;";
+    movingUI.style.cssText ="display:none;";
+  }
+  // 種類表示追加
+  document.getElementById("objectType").textContent ="種類: " + obj.userData.name;
+  // 位置更新追加
+  updatePositionUI(obj);
+  // 電源ボタン更新
+  const powerButton =document.getElementById("powerButton");
+  powerButton.textContent =obj.userData.isOn ? "ON" : "OFF";
+  // 向きUI更新
+  if (obj.userData.type === "テープライト") {updateRotationUI();}
+  if (obj.userData.type === "ムービングライト") {
+    updateMovingRotationUI();
+    updateMovingTiltUI();
+  }
+}
+
+function showDefaultUI() {
+  document.getElementById("defaultUI").style.display = "block";
+  document.getElementById("objectUI").style.display = "none";
+  // 最初のメニューに戻す
+  showMainMenuUI();
+}
+
+function backToDefaultUI() {
+  // 選択解除
+  if (selectedObject) {removeOutline(selectedObject);}
+  selectedObject = null;
+  // 最初のUIへ戻す
+  showDefaultUI();
+}
+
+function showMainMenuUI() {
+  document.getElementById("mainMenuUI").style.display = "block";
+  document.getElementById("roomSettingUI").style.display = "none";
+  document.getElementById("lightSelectionUI").style.display = "none";
+  document.getElementById("plateSettingUI").style.display = "none";
+  // 壁メニューも閉じる
+  const wallMenu =document.getElementById("wallMenu");
+  if (wallMenu) {
+    wallMenu.style.display = "none";
+  }
+}
+
+function showRoomUI() {
+  document.getElementById("mainMenuUI").style.display = "none";
+  document.getElementById("roomSettingUI").style.display = "block";
+  document.getElementById("lightSelectionUI").style.display = "none";
+  document.getElementById("plateSettingUI").style.display = "none";
+}
+
+function showLightUI() {
+  document.getElementById("mainMenuUI").style.display = "none";
+  document.getElementById("roomSettingUI").style.display = "none";
+  document.getElementById("lightSelectionUI").style.display = "block";
+  document.getElementById("plateSettingUI").style.display = "none";
+}
+
+function showPlateUI() {
+  document.getElementById("mainMenuUI").style.display = "none";
+  document.getElementById("roomSettingUI").style.display = "none";
+  document.getElementById("lightSelectionUI").style.display = "none";
+  document.getElementById("plateSettingUI").style.display = "block";
+  // プレート選択モードへ
+  controlMode = "plane";
+  // カメラ・ライト操作ボタンの選択表示を外す
+  document.getElementById("cameraModeButton").classList.remove("active");
+  document.getElementById("objectModeButton").classList.remove("active");
+  // プレートを表示
+  if (wallBlocks.length === 0) {
+    showWallBlocks();
+  } else {
+    showExistingWallBlocks();
+  }
+}
+
+function closePlateUI() {
+  // プレートを非表示
+  hideWallBlocks();
+  // ライト操作モードへ戻す
+  controlMode = "object";
+  document.getElementById("objectModeButton").classList.add("active");
+  document.getElementById("cameraModeButton").classList.remove("active");
+  // 初期メニューへ戻る
+  showMainMenuUI();
+}
+
+function showWallBlocks() {
+  // すでに表示されているブロックを削除
+  clearWallBlocks();
+  const visualWidth =roomWidth * ROOM_SCALE;
+  const visualDepth =roomDepth * ROOM_SCALE;
+  const visualHeight =roomHeight * ROOM_SCALE;
+  const halfW =visualWidth / 2;
+  const halfD =visualDepth / 2;
+  // 分割数
+  const cols = 8;
+  const rows = 4;
+  // 4つの壁
+  const wallSides = [
+    "front","back","left","right"
+  ];
+  wallSides.forEach(wallSide => {
+    // 前後壁と左右壁では横幅が異なる
+    let wallHorizontalSize;
+    // 前壁・後壁は部屋の横幅を使う
+    if (
+      wallSide === "front" ||
+      wallSide === "back"
+    ) {
+      wallHorizontalSize =visualWidth;
+    }
+    // 左壁・右壁は部屋の奥行きを使う
+    else {
+      wallHorizontalSize =visualDepth;
+    }
+    const blockWidth =wallHorizontalSize / cols;
+    const blockHeight =visualHeight / rows;
+    for (
+      let row = 0;
+      row < rows;row++
+    ) {
+      for (
+        let col = 0;
+        col < cols;
+        col++
+      ) {
+        const block =
+          new THREE.Mesh(
+            new THREE.PlaneGeometry(
+              blockWidth * 0.95,blockHeight * 0.95
+            ),
+            new THREE.MeshBasicMaterial({
+              color: 0xcccccc,transparent: true,
+              opacity: 0.25,side: THREE.DoubleSide,
+              depthWrite: false
+            })
+          );
+        // 壁面上の横位置
+        const horizontalPosition =-wallHorizontalSize / 2 +
+          blockWidth / 2 +col * blockWidth;
+        // 壁面上の縦位置
+        const y =blockHeight / 2 +row * blockHeight;
+        // 前壁
+        if (wallSide === "front") {
+          block.position.set(
+            horizontalPosition,
+            y,halfD - 0.03
+          );
+          block.rotation.y =Math.PI;
+        }
+        // 後壁
+        else if (
+          wallSide === "back"
+        ) {
+          block.position.set(
+            horizontalPosition,
+            y,-halfD + 0.03
+          );
+          block.rotation.y = 0;
+        }
+        // 左壁
+        else if (
+          wallSide === "left"
+        ) {
+          block.position.set(
+            -halfW + 0.03,
+            y,horizontalPosition
+          );
+          block.rotation.y =Math.PI / 2;
+        }
+        // 右壁
+        else if (
+          wallSide === "right"
+        ) {
+          block.position.set(
+            halfW - 0.03,
+            y,horizontalPosition
+          );
+          block.rotation.y =-Math.PI / 2;
+        }
+        // ブロック情報
+        block.userData.type ="wallBlock";
+        block.userData.wallSide =wallSide;
+        block.userData.col =col;
+        block.userData.row =row;
+        block.userData.blockWidth =blockWidth;
+        block.userData.blockHeight =blockHeight;
+        block.userData.selected =false;
+        scene.add(block);
+        wallBlocks.push(block);
+      }
+    }
+  });
+}
+
+function clearWallBlocks() {
+  wallBlocks.forEach(block => {
+    scene.remove(block);
+    block.geometry.dispose();
+    block.material.dispose();
+  });
+  wallBlocks = [];
+  // 削除済みブロックを選択配列に残さない
+  selectedBlocks = [];
+}
+
+function showExistingWallBlocks() {
+  wallBlocks.forEach(block => {
+    block.visible = true;
+  });
+}
+
+function hideWallBlocks() {
+  wallBlocks.forEach(block => {
+    block.visible = false;
+  });
+}
+
+function isInsideSelectedBlock(
+  point,
+  wallSide
+) {
+  return selectedBlocks.some(
+    block => {
+      // 違う壁のブロックなら対象外
+      if (
+        block.userData.wallSide !==
+        wallSide
+      ) {
+        return false;
+      }
+      const blockWidth =block.userData.blockWidth;
+      const blockHeight =block.userData.blockHeight;
+      const blockY =block.position.y;
+      // 縦方向の判定
+      const insideY =point.y >=blockY - blockHeight / 2 &&
+        point.y <=blockY + blockHeight / 2;
+      // 前壁・後壁
+      // 横方向はx座標で判定
+      if (
+        wallSide === "front" ||
+        wallSide === "back"
+      ) {
+        const blockX =block.position.x;
+        const insideX =
+          point.x >=blockX - blockWidth / 2 &&
+          point.x <=blockX + blockWidth / 2;
+        return insideX && insideY;
+      }
+      // 左壁・右壁
+      // 横方向はz座標で判定
+      if (
+        wallSide === "left" ||
+        wallSide === "right"
+      ) {
+        const blockZ =block.position.z;
+        const insideZ =
+          point.z >=blockZ - blockWidth / 2 &&
+          point.z <=blockZ + blockWidth / 2;
+        return insideZ && insideY;
+      }
+      return false;
+    }
+  );
+}
+
+// 位置更新
+function updatePositionUI(obj) {
+  document.getElementById("objectPosition").textContent =
+    "位置: x=" + obj.position.x.toFixed(2) +
+    ", z=" + obj.position.z.toFixed(2);
+  // テープライト
+  if (obj.userData.type === "テープライト") {
+    document.getElementById("colorPicker").value =
+      obj.userData.lightColor;
+  }
+  // ムービングライト
+  else if (
+    obj.userData.type === "ムービングライト"
+  ) {
+    document.getElementById("colorPicker").value =
+      obj.userData.lightColor;
+  }
+}
+
+function deleteSelectedObject() {
+  if (!selectedObject) return;
+  // 名前取得
+  const name = selectedObject.userData.name;
+  document.querySelectorAll(".keyframe").forEach(keyframe => {
+    if (keyframe.dataset.target === name) {
+      keyframe.remove();
+    }
+  });
+  // ムービングライト番号取得
+  if (selectedObject.userData.type ==="ムービングライト") {
+    const match = name.match(/\d+/);
+    if (match) {
+      const deletedNumber =Number(match[0]);
+      // 最後の番号なら戻す
+      if (deletedNumber === movingLightCount) {
+        movingLightCount--;
+      }
+    }
+  }
+  // テープライト番号取得
+  if (selectedObject.userData.type ==="テープライト") {
+    const match = name.match(/\d+/);
+    if (match) {
+      const deletedNumber =Number(match[0]);
+      // 最後の番号なら戻す
+      if (deletedNumber === tapeLightCount) {
+        tapeLightCount--;
+      }
+    }
+  }
+  // シーンから削除
+  scene.remove(selectedObject);
+  // 配列から削除
+  objects = objects.filter(obj => obj !== selectedObject);
+  // 選択解除
+  selectedObject = null;
+  redrawTimelineTracks();
+  // UI戻す
+  showDefaultUI();
+}
+
+function changeLightColor(event) {
+  const color = event.target.value;
+  if (!selectedObject) return;
+  // ●選択中ならキーフレームにも保存
+  if (selectedKeyframe) {
+    selectedKeyframe.dataset.color = color;
+    selectedKeyframe.style.background = color;
+  }
+  // 3D側にも即反映
+  selectedObject.userData.lightColor = color;
+  if (selectedObject.userData.type === "テープライト") {
+    if (selectedObject.userData.isOn) {
+      selectedObject.userData.lightSurface.material.color.set(color);
+      selectedObject.userData.glow.material.color.set(color);
+      selectedObject.userData.glow.visible = true;
+    } else {
+      // OFF中は保存だけ
+      selectedObject.userData.lightSurface.material.color.set(0x555555);
+      selectedObject.userData.glow.visible = false;
+    }
+    sendHueColor(color);
+  }
+  else if (selectedObject.userData.type ==="スマートライト") {
+    if (selectedObject.userData.isOn) {
+     selectedObject.userData
+       .lightSurface.material.color.set(color);
+     selectedObject.userData
+       .lightSurface.material.emissive.set(color);
+     selectedObject.userData
+       .glow.material.color.set(color);
+     selectedObject.userData.glow.visible = true;
+    } else {
+      // OFFなら点灯させない
+      selectedObject.userData
+       .lightSurface.material.color.set(0x555555);
+      selectedObject.userData
+       .lightSurface.material.emissive.set(0x000000);
+     selectedObject.userData.glow.visible = false;
+    }
+    sendSmartLightColor(selectedObject.userData.smartLightId,color);
+  }
+  else if (selectedObject.userData.type === "ムービングライト") {
+    if (selectedObject.userData.isOn) {
+      selectedObject.userData.cap.material.color.set(color);
+      selectedObject.userData.beam.material.color.set(color);
+      selectedObject.userData.beam.visible = true;
+    } else {
+      selectedObject.userData.cap.material.color.set(0x555555);
+      selectedObject.userData.beam.visible = false;
+    }
+    const rgb = hexToRgb(color);
+    sendColorToRealLight(rgb.r, rgb.g, rgb.b, 0, 100);
+  }
+  updateRealLighting(selectedObject);
+}
+
+function sendHueColor(color) {
+  fetch("/hue/tape/set_color", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({color: color})
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("テープライト色変更:", data);
+  })
+  .catch(error => {
+    console.error("テープライト送信エラー:", error);
+  });
+}
+
+function sendHuePower(isOn) {
+  fetch("/hue/tape/set_power", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({on: isOn})
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("テープライト電源変更:", data);
+  })
+  .catch(error => {
+    console.error("テープライト電源エラー:", error);
+  });
+}
+
+function sendSmartLightColor(smartLightId,color) {
+  fetch("/hue/smart" +smartLightId +"/set_color",
+    {method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({color: color})
+    }
+  )
+  .then(response => response.json())
+  .then(data => {
+    console.log("スマートライト" +smartLightId +" 色変更:",data);
+  })
+  .catch(error => {
+    console.error("スマートライト色送信エラー:",error);
+  });
+}
+
+function sendSmartLightPower(smartLightId,isOn) {
+  fetch("/hue/smart" +smartLightId +"/set_power",
+    {method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({on: isOn})
+    }
+  )
+  .then(response => response.json())
+  .then(data => {
+    console.log("スマートライト" +smartLightId +" 電源:",data);
+  })
+  .catch(error => {
+    console.error("スマートライト電源エラー:",error);
+  });
+}
+
+function toggleTapeLight() {
+  if (!selectedObject) return;
+  const powerButton = document.getElementById("powerButton");
+  let newState;
+  // ●選択中
+  if (selectedKeyframe) {
+    const current = selectedKeyframe.dataset.isOn === "true";
+    newState = !current;
+    selectedKeyframe.dataset.isOn = newState.toString();
+  }
+  // 通常ライト選択中
+  else {
+    newState = !selectedObject.userData.isOn;
+    selectedObject.userData.isOn = newState;
+  }
+  selectedObject.userData.isOn = newState;
+  powerButton.textContent = newState ? "ON" : "OFF";
+  if (selectedObject.userData.type === "テープライト") {
+    if (newState) {
+      selectedObject.userData.lightSurface.material.color.set(
+        selectedObject.userData.lightColor
+      );
+      selectedObject.userData.glow.material.color.set(
+        selectedObject.userData.lightColor
+      );
+      selectedObject.userData.glow.visible = true;
+      sendHuePower(true);
+    } else {
+      selectedObject.userData.lightSurface.material.color.set(0x555555);
+      selectedObject.userData.glow.visible = false;
+      sendHuePower(false);
+    }
+  }
+  else if (selectedObject.userData.type ==="スマートライト") {
+    if (newState) {
+      // 発光面
+      selectedObject.userData
+       .lightSurface.material.color
+       .set(selectedObject.userData.lightColor);
+      // emissiveも同じ色
+      selectedObject.userData
+       .lightSurface.material.emissive
+       .set(selectedObject.userData.lightColor);
+      selectedObject.userData
+       .lightSurface.material.emissiveIntensity = 1.5;
+      // glow
+      selectedObject.userData
+       .glow.material.color
+       .set(selectedObject.userData.lightColor);
+      selectedObject.userData.glow.visible = true;
+      sendSmartLightPower(selectedObject.userData.smartLightId,true);
+    } else {
+      selectedObject.userData
+       .lightSurface.material.color.set(0x555555);
+      selectedObject.userData
+       .lightSurface.material.emissive.set(0x000000);
+      selectedObject.userData
+       .lightSurface.material.emissiveIntensity = 0;
+      selectedObject.userData.glow.visible = false;
+      sendSmartLightPower(selectedObject.userData.smartLightId,false);
+    }
+  }
+  else if (selectedObject.userData.type === "ムービングライト") {
+    if (newState) {
+      selectedObject.userData.cap.material.color.set(
+        selectedObject.userData.lightColor
+      );
+      selectedObject.userData.beam.material.color.set(
+        selectedObject.userData.lightColor
+      );
+      selectedObject.userData.beam.visible = true;
+      const rgb = hexToRgb(selectedObject.userData.lightColor);
+      sendColorToRealLight(rgb.r, rgb.g, rgb.b, 0, 100);
+    } else {
+      selectedObject.userData.cap.material.color.set(0x555555);
+      selectedObject.userData.beam.visible = false;
+      sendColorToRealLight(0, 0, 0, 0, 0);
+    }
+  }
+  updateRealLighting(selectedObject);
+}
+
+// ムービングライト方向固定
+function setMovingDirection(direction) {
+  if (!selectedObject) return;
+  if (selectedObject.userData.type !=="ムービングライト") return;
+  let rotation;
+  let realPanDegree;
+  switch (direction) {
+    case "front":
+      // 3D
+      rotation = 0;
+      // 実機
+      realPanDegree = 0;
+      break;
+    case "right":
+      // 3D
+      rotation =THREE.MathUtils.degToRad(90);
+      // 実機
+      realPanDegree = 60;
+      break;
+    case "back":
+      // 3D
+      rotation =THREE.MathUtils.degToRad(180);
+      // 実機
+      realPanDegree = 120;
+      break;
+    case "left":
+      // 3D
+      rotation =THREE.MathUtils.degToRad(270);
+      // 実機
+      realPanDegree = 180;
+      break;
+  }
+  // 3Dモデルの向き
+  selectedObject.userData.head.rotation.y = rotation;
+  // キーフレーム保存
+  if (selectedKeyframe) {
+    selectedKeyframe.dataset.rotation =rotation;
+  }
+  // UI更新
+  updateMovingRotationUI();
+  // 実機へ送信
+  sendMovingPanOnly(realPanDegree);
+}
+
+// スライダー回転
+function updateMovingRotationSlider(value) {
+  if (!selectedObject) return;
+  if (selectedObject.userData.type !== "ムービングライト") return;
+  const degree = Number(value);
+  const rotation = THREE.MathUtils.degToRad(degree);
+  selectedObject.userData.head.rotation.y = rotation;
+  if (selectedKeyframe) {
+    selectedKeyframe.dataset.rotation = rotation;
+  }
+  document.getElementById("movingRotationValue").value =
+    Math.round(degree);
+  const realPanDegree =convert3DPanToRealPan(degree);
+  sendMovingPanOnly(realPanDegree);
+}
+
+// UI同期
+function updateMovingRotationUI() {
+  if (!selectedObject) return;
+  if (selectedObject.userData.type !== "ムービングライト") return;
+  const head = selectedObject.userData.head;
+  const degree = THREE.MathUtils.radToDeg(head.rotation.y);
+  const fixedDegree = ((degree % 360) + 360) % 360;
+  document.getElementById("movingRotationSlider").value =
+    fixedDegree;
+  document.getElementById("movingRotationValue").value =
+    Math.round(fixedDegree);
+}
+
+// 向き固定ボタン
+function setTapeDirection(direction) {
+  let rotation = 0;
+  switch(direction) {
+    case "front":
+      rotation = 0;
+      break;
+    case "left":
+      rotation = THREE.MathUtils.degToRad(90);
+      break;
+    case "right":
+      rotation = THREE.MathUtils.degToRad(270);
+      break;
+    case "back":
+      rotation = THREE.MathUtils.degToRad(180);
+      break;
+  }
+  // キーフレーム編集
+  if (selectedKeyframe) {
+    selectedKeyframe.dataset.rotation =rotation;
+    const degree =THREE.MathUtils.radToDeg(rotation);
+    document.getElementById("rotationSlider").value = degree;
+    document.getElementById("rotationValue").value =Math.round(degree) + "°";
+    return;
+  }
+  // ライト編集
+  if (!selectedObject) return;
+  if (
+    selectedObject.userData.type !==
+    "テープライト"
+  ) return;
+  selectedObject.rotation.y = rotation;
+  updateRotationUI();
+}
+
+// スライダー回転
+function updateRotationSlider(value) {
+  if (selectedKeyframe) {
+    selectedKeyframe.dataset.rotation =THREE.MathUtils.degToRad(value);
+    document.getElementById("rotationValue").value =Math.round(value) + "°";
+    return;
+  }
+  if (!selectedObject) return;
+  if (
+    selectedObject.userData.type !=="テープライト"
+  ) return;
+  // degree → radian
+  selectedObject.rotation.y =THREE.MathUtils.degToRad(value);
+  // 表示更新
+  document.getElementById(
+    "rotationValue"
+  ).textContent =Math.round(value) + "°";
+}
+
+function selectObjectFromKeyframe(keyframe) {
+  const targetName = keyframe.dataset.target;
+  const targetObject = objects.find(obj =>
+    obj.userData.name === targetName
+  );
+  if (!targetObject) return;
+  // 前の黄色枠を消す
+  if (selectedObject && selectedObject !== targetObject) {
+    removeOutline(selectedObject);
+    resetSelectedObjectToDefaultState();
+  }
+  // 選択中ライトを変更
+  selectedObject = targetObject;
+  // キーフレームの内容をライトに反映
+  applyKeyframeStateToObject(keyframe, selectedObject);
+  // UI更新
+  showObjectUI(selectedObject);
+  // 黄色枠追加
+  addOutline(selectedObject);
+}
+
+function applyKeyframeStateToObject(keyframe, obj) {
+  const color = keyframe.dataset.color;
+  const isOn = keyframe.dataset.isOn === "true";
+  const rotation = Number(keyframe.dataset.rotation);
+  obj.userData.lightColor = color;
+  obj.userData.isOn = isOn;
+  // テープライト
+  if (obj.userData.type === "テープライト") {
+    obj.rotation.y = rotation;
+    if (isOn) {
+      obj.userData.lightSurface.material.color.set(color);
+      obj.userData.glow.material.color.set(color);
+      obj.userData.glow.visible = true;
+    } else {
+      obj.userData.lightSurface.material.color.set(0x555555);
+      obj.userData.glow.visible = false;
+    }
+    updateRotationUI();
+  }
+  // ムービングライト
+  else if (obj.userData.type === "ムービングライト") {
+    obj.userData.head.rotation.y = rotation;
+    if (keyframe.dataset.tilt !== undefined) {
+      obj.userData.tiltHead.rotation.x =
+        Number(keyframe.dataset.tilt);
+    }
+    if (isOn) {
+      obj.userData.cap.material.color.set(color);
+      obj.userData.beam.material.color.set(color);
+      obj.userData.beam.visible = true;
+    } else {
+      obj.userData.cap.material.color.set(0x555555);
+      obj.userData.beam.visible = false;
+    }
+    updateMovingRotationUI();
+    updateMovingTiltUI();
+  }
+  // スマートライト
+  else if (obj.userData.type ==="スマートライト") {
+    if (isOn) {
+      obj.userData.lightSurface.material.color.set(color);
+      obj.userData.lightSurface.material.emissive.set(color);
+      obj.userData.lightSurface.material.emissiveIntensity = 1.5;
+      obj.userData.glow.material.color.set(color);
+      obj.userData.glow.visible = true;
+    } else {
+      obj.userData.lightSurface.material.color.set(0x555555);
+      obj.userData.lightSurface.material.emissive.set(0x000000);
+      obj.userData.lightSurface.material.emissiveIntensity = 0;
+      obj.userData.glow.visible = false;
+  }
+}
+  document.getElementById("colorPicker").value = color;
+  document.getElementById("powerButton").textContent =
+    isOn ? "ON" : "OFF";
+}
+
+// 回転UI更新
+function updateRotationUI() {
+  if (!selectedObject) return;
+  const degree =
+    THREE.MathUtils.radToDeg(selectedObject.rotation.y);
+  // 0〜360へ補正
+  const fixedDegree =((degree % 360) + 360) % 360;
+  // スライダー同期
+  document.getElementById("rotationSlider").value = fixedDegree;
+  // 数値表示
+  document.getElementById(
+    "rotationValue"
+  ).textContent =Math.round(fixedDegree) + "°";
+}
+
+function updateRotationNumber(value) {
+  if (value === "") return;
+  let degree = Number(value);
+  degree = Math.max(0, Math.min(360, degree));
+  document.getElementById("rotationSlider").value = degree;
+  updateRotationSlider(degree);
+}
+
+function updateMovingRotationNumber(value) {
+  if (value === "") return;
+  let degree = Number(value);
+  degree = Math.max(0, Math.min(360, degree));
+  document.getElementById("movingRotationSlider").value =
+    degree;
+  updateMovingRotationSlider(degree);
+}
+
+function updateMovingTiltNumber(value) {
+  if (value === "") return;
+  let degree = Number(value);
+  degree = Math.max(-90, Math.min(90, degree));
+  document.getElementById("movingTiltSlider").value =
+    degree;
+  updateMovingTiltSlider(degree);
+}
+
+function onKeyDown(event) {
+  // 入力欄を操作しているときは邪魔しない
+  if (
+    event.target.tagName === "INPUT" ||
+    event.target.tagName === "TEXTAREA"
+  ) {
+    return;
+  }
+  // Ctrl+C
+  if (event.ctrlKey && event.key === "c") {
+    if (!selectedKeyframe) return;
+    copiedKeyframeData = {
+      color: selectedKeyframe.dataset.color,
+      isOn: selectedKeyframe.dataset.isOn,
+      rotation: selectedKeyframe.dataset.rotation,
+      tilt: selectedKeyframe.dataset.tilt,
+      target: selectedKeyframe.dataset.target
+    };
+    return;
+  }
+  // Ctrl+V
+  if (event.ctrlKey && event.key === "v") {
+    if (!copiedKeyframeData) return;
+    if (!selectedObject) return;
+    createCopiedKeyframe();
+    return;
+  }
+  // Backspaceキー
+  if (event.key === "Backspace") {
+    event.preventDefault();
+    // キーフレーム選択中なら●削除
+    if (selectedKeyframe) {
+      selectedKeyframe.remove();
+      selectedKeyframe = null;
+      updateSelectedKeyframeUI();
+      return;
+    }
+    // ライト選択中ならライト削除
+    if (selectedObject) {
+      deleteSelectedObject();
+    }
+  }
+}
+
+function addOutline(obj) {
+  if (obj.userData.outline) return;
+  let targetMesh = null;
+  // ムービングライト
+  if (obj.userData.type === "ムービングライト") {
+    targetMesh = obj.userData.base;
+  }
+  // テープライト
+  else if (obj.userData.type === "テープライト") {
+    targetMesh = obj.userData.body;
+  }
+  else if (obj.userData.type ==="スマートライト") {
+    targetMesh =obj.userData.body;
+  }
+  // Meshじゃないなら終了
+  if (!targetMesh) return;
+  const edges = new THREE.EdgesGeometry(
+    targetMesh.geometry
+  );
+  const line = new THREE.LineSegments(
+    edges,
+    new THREE.LineBasicMaterial({color: 0xffff00})
+  );
+  line.raycast = () => {};
+  line.scale.set(1.05, 1.05, 1.05);
+  targetMesh.add(line);
+  obj.userData.outline = line;
+}
+
+function applyKeyframes() {
+  // 全キーフレーム取得
+  const keyframes = document.querySelectorAll(".keyframe");
+  keyframes.forEach(keyframe => {
+    // 保存時間
+    const keyTime = Number(keyframe.dataset.time);
+    // 保存色
+    const color = keyframe.dataset.color;
+    const isOn =keyframe.dataset.isOn === "true";
+    const rotation =Number(keyframe.dataset.rotation);
+    // 保存対象ライト名
+    const targetName = keyframe.dataset.target;
+    // 時間一致
+    if (Math.abs(currentTime - keyTime) < 0.1) {
+      objects.forEach(obj => {
+        // 対象ライトだけ実行
+        if (obj.userData.name !== targetName) return;
+        // テープライト
+        if (obj.userData.type === "テープライト") {
+          // 向き適用
+          obj.rotation.y = rotation;
+          // ON/OFF適用
+          obj.userData.isOn = isOn;
+          obj.userData.lightColor = color;
+          if (isOn) {
+            obj.userData.lightSurface.material.color.set(color);
+            obj.userData.glow.material.color.set(color);
+            obj.userData.glow.visible = true;
+            const keyId =targetName + "_" +keyTime.toFixed(1);
+            if (lastHueSentKeyframe !== keyId) {
+              sendHueColor(color);
+              lastHueSentKeyframe = keyId;
+            }
+          }
+          else {
+            obj.userData.lightSurface.material.color.set(0x555555);
+            obj.userData.glow.visible = false;
+            const keyId =targetName + "_" +keyTime.toFixed(1);
+            if (lastHueSentKeyframe !== keyId) {
+              sendHuePower(false);
+              lastHueSentKeyframe = keyId;
+            }
+          }
+          updateRealLighting(obj);
+        }
+        // ムービングライト
+        if (obj.userData.type === "ムービングライト") {
+          obj.userData.head.rotation.y = rotation;
+          let tilt=obj.userData.tiltHead.rotation.x;
+          if (keyframe.dataset.tilt !== undefined) {
+            tilt = Number(keyframe.dataset.tilt);
+            obj.userData.tiltHead.rotation.x =tilt;
+          }
+          // ON/OFF適用
+          obj.userData.isOn = isOn;
+          obj.userData.lightColor = color;
+          if (isOn) {
+            obj.userData.cap.material.color.set(color);
+            obj.userData.beam.material.color.set(color);
+            obj.userData.beam.visible = true;
+          }
+          else {
+            obj.userData.cap.material.color.set(0x555555);
+            obj.userData.beam.visible = false;
+          }
+          const panDegree =THREE.MathUtils.radToDeg(rotation);
+          const fixedPan =((panDegree % 360) + 360) % 360;
+          const realPanDegree =convert3DPanToRealPan(fixedPan);
+          const tiltDegree =THREE.MathUtils.radToDeg(tilt);
+          const keyId =targetName + "_" +keyTime.toFixed(1) + "_" +
+           color + "_" +isOn + "_" +fixedPan + "_" +tiltDegree;
+          if (lastHueSentKeyframe !== keyId) {
+            sendMovingLightToRealLight(color, isOn);
+            sendMovingPanOnly(realPanDegree);
+            const fixedTiltDegree =Math.round(tiltDegree * 10) / 10;
+            if (lastSentMovingTiltDegree === null) {
+              sendMovingTiltOnly(fixedTiltDegree);
+            }
+            else {const fixedLastTilt =
+              Math.round(lastSentMovingTiltDegree * 10) / 10;
+              if (Math.abs(fixedTiltDegree -fixedLastTilt) >= 0.5) {
+                sendMovingTiltOnly(fixedTiltDegree);
+              }
+            }
+          }
+          updateRealLighting(obj);
+        }
+        // スマートライト
+        if (obj.userData.type ==="スマートライト") {
+          obj.userData.isOn = isOn;
+          obj.userData.lightColor = color;
+          // ON
+          if (isOn) {
+           // 電球表面の色
+           obj.userData.lightSurface.material.color.set(color);
+           // 発光色
+           obj.userData.lightSurface.material.emissive.set(color);
+           obj.userData.lightSurface.material.emissiveIntensity = 1.5;
+           // glow
+           obj.userData.glow.material.color.set(color);
+           obj.userData.glow.visible = true;
+           const keyId =targetName + "_" +keyTime.toFixed(1) +"_" + color +"_smart_on";
+           if (lastHueSentKeyframe !== keyId) {
+             sendSmartLightColor(obj.userData.smartLightId,color);
+             lastHueSentKeyframe = keyId;
+           }
+          }
+          // OFF
+          else {
+           obj.userData.lightSurface.material.color.set(0x555555);
+           obj.userData.lightSurface.material.emissive.set(0x000000);
+           obj.userData.lightSurface.material.emissiveIntensity = 0;
+           obj.userData.glow.visible = false;
+           const keyId =targetName + "_" +keyTime.toFixed(1) +"_smart_off";
+           if (lastHueSentKeyframe !== keyId) {
+             sendSmartLightPower(obj.userData.smartLightId,false);
+             lastHueSentKeyframe = keyId;
+            }
+          }
+        }
+        updateRealLighting(obj);
+      });
+    }
+  });
+}
+
+function updateSelectedKeyframeUI() {
+  // 選択なし
+  if (!selectedKeyframe) {
+    document.getElementById("selectedKeyframeText").textContent =
+      "選択中キーフレーム: なし";
+    return;
+  }
+  // 時間取得
+  const time = Number(selectedKeyframe.dataset.time);
+  document.getElementById("selectedKeyframeText").textContent =
+    "選択中キーフレーム: " + time.toFixed(1) + "秒";
+  // 色
+  document.getElementById("colorPicker").value =
+    selectedKeyframe.dataset.color;
+  // 電源
+  document.getElementById("powerButton").textContent =
+    selectedKeyframe.dataset.isOn === "true" ? "ON" : "OFF";
+  // テープライト
+  if (
+    selectedObject &&
+    selectedObject.userData.type === "テープライト"
+  ) {
+    const degree =
+      THREE.MathUtils.radToDeg(
+        Number(selectedKeyframe.dataset.rotation)
+      );
+    document.getElementById("rotationSlider").value = degree;
+    document.getElementById("rotationValue").textContent =
+      Math.round(degree) + "°";
+  }
+  // ムービングライト
+  if (
+    selectedObject &&
+    selectedObject.userData.type === "ムービングライト"
+  ) {
+    const degree =
+      THREE.MathUtils.radToDeg(
+        Number(selectedKeyframe.dataset.rotation)
+      );
+    document.getElementById("movingRotationSlider").value = degree;
+    // number入力なので「°」は付けない
+    document.getElementById("movingRotationValue").value =
+      Math.round(degree);
+    // 縦方向
+    if (selectedKeyframe.dataset.tilt !== undefined) {
+      const tiltDegree =
+        THREE.MathUtils.radToDeg(
+          Number(selectedKeyframe.dataset.tilt)
+        );
+      document.getElementById("movingTiltSlider").value =
+        tiltDegree;
+      document.getElementById("movingTiltValue").value =
+        Math.round(tiltDegree);
+    }
+  }
+}
+
+function removeOutline(obj) {
+  if (!obj.userData.outline) return;
+  obj.userData.outline.parent.remove(obj.userData.outline);
+  obj.userData.outline.geometry.dispose();
+  obj.userData.outline.material.dispose();
+  obj.userData.outline = null;
+}
+
+function sendColorToRealLight(r, g, b, w = 0, master = 100) {
+  fetch("http://127.0.0.1:5000/dmx/set_color", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      r: r,
+      g: g,
+      b: b,
+      w: w,
+      master: master
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("実機ライトへ送信成功:", data);
+  })
+  .catch(error => {
+    console.error("実機ライト送信エラー:", error);
+  });
+}
+
+function sendMovingPosition(panDegree, tiltDegree) {
+  // 横方向 0～360° → DMX 0～255
+  let pan = Math.round((panDegree / 360) * 255);
+  // 縦方向 -90～90° → DMX 0～255
+  let tilt;
+  if (tiltDegree === -30) {tilt = 60;
+  } 
+  else {
+    tilt = Math.round(((tiltDegree + 90) / 180) * 255);
+  }
+  // 念のため0～255に制限
+  pan = Math.max(0, Math.min(255, pan));
+  tilt = Math.max(0, Math.min(255, tilt));
+  fetch("http://127.0.0.1:5000/dmx/set_position", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      pan: pan,
+      tilt: tilt
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("実機ムービング向き送信成功:", data);
+  })
+  .catch(error => {
+    console.error("実機ムービング向き送信エラー:", error);
+  });
+}
+
+function sendMovingPanOnly(panDegree) {
+
+  // 実機用角度 → DMX 0～255
+  let pan = Math.round(
+    (panDegree / 360) * 255
+  );
+
+  pan = Math.max(
+    0,
+    Math.min(255, pan)
+  );
+
+  fetch(
+    "http://127.0.0.1:5000/dmx/set_pan",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        pan: pan
+      })
+    }
+  );
+}
+
+function sendMovingTiltOnly(tiltDegree) {
+
+  // 小数誤差対策
+  const fixedTiltDegree =
+    Math.round(tiltDegree * 10) / 10;
+
+  let tilt;
+
+
+  // 初期位置
+  // 3D -30° = 実機DMX 60
+  if (
+    Math.abs(
+      fixedTiltDegree - (-30)
+    ) < 0.5
+  ) {
+
+    tilt = 60;
+
+  } else {
+
+    tilt = Math.round(
+      (
+        (fixedTiltDegree + 90) /
+        180
+      ) * 255
+    );
+  }
+
+
+  tilt = Math.max(
+    0,
+    Math.min(255, tilt)
+  );
+
+
+  fetch(
+    "http://127.0.0.1:5000/dmx/set_tilt",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        tilt: tilt
+      })
+    }
+  );
+
+
+  // 最後に送った縦角度を保存
+  lastSentMovingTiltDegree =
+    fixedTiltDegree;
+}
+
+function convert3DPanToRealPan(panDegree) {
+  // 0～360°に正規化
+  const fixed =
+    ((panDegree % 360) + 360) % 360;
+  return fixed * (2 / 3);
+}
+
+function hexToRgb(hex) {
+  hex = hex.replace("#", "");
+  return {
+    r: parseInt(hex.substring(0,2),16),
+    g: parseInt(hex.substring(2,4),16),
+    b: parseInt(hex.substring(4,6),16)
+  };
+}
+
+function sendMovingLightToRealLight(color, isOn) {
+  if (isOn) {
+    const rgb = hexToRgb(color);
+    sendColorToRealLight(rgb.r, rgb.g, rgb.b, 0, 100);
+  } else {
+    sendColorToRealLight(0, 0, 0, 0, 0);
+  }
+}
+
+function resetSelectedObjectToDefaultState() {
+  if (!selectedObject) return;
+  selectedObject.userData.isOn = false;
+  if (selectedObject.userData.type === "テープライト") {
+    selectedObject.userData.lightSurface.material.color.set(0x555555);
+    selectedObject.userData.glow.visible = false;
+    if (selectedObject.userData.realLights) {
+      selectedObject.userData.realLights.forEach(
+        light => {light.intensity = 0;}
+      );
+    }
+  }
+  else if (selectedObject.userData.type === "ムービングライト") {
+    selectedObject.userData.cap.material.color.set(0x555555);
+    selectedObject.userData.beam.visible = false;
+    if (selectedObject.userData.realLight) {
+      selectedObject.userData.realLight.intensity = 0;
+    }
+    selectedObject.userData.head.rotation.y = 0;
+    selectedObject.userData.tiltHead.rotation.x = -Math.PI / 6;
+    sendMovingPosition(0,-30);
+  }
+  else if (selectedObject.userData.type ==="スマートライト") {
+    // 電球表面をOFF色へ
+    selectedObject.userData.lightSurface.material.color.set(0x555555);
+    // emissiveを消す
+    if (selectedObject.userData.lightSurface.material.emissive
+    ) {
+      selectedObject.userData.lightSurface.material.emissive.set(0x000000);
+      selectedObject.userData.lightSurface.material.emissiveIntensity = 0;
+    }
+    // glowを消す
+    selectedObject.userData.glow.visible = false;
+    // 実照明PointLightも消す
+    if (selectedObject.userData.realLight) {
+      selectedObject.userData.realLight.intensity = 0;
+    }
+  }
+  // UI更新
+  document.getElementById("powerButton").textContent = "OFF";
+  updateSelectedKeyframeUI();
+  if (selectedObject.userData.type === "ムービングライト") {
+    updateMovingRotationUI();
+    updateMovingTiltUI();
+  }
+  if (selectedObject.userData.type === "テープライト") {
+    updateRotationUI();
+  }
+}
+
+</script>
+
+</body>
+</html>
